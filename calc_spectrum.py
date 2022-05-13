@@ -11,6 +11,10 @@ logger = logging.getLogger('calc_spectrum')
 logger.addHandler(hnd)
 logger.setLevel(logging.INFO)
 
+# BUGS: missing 1 MeV in dd->nHe3 reactoin!
+# How to adapt sigma to each event, instead of using sigma_avg?
+
+# Need NumBa here
 
 def mono_iso(E1, E2, n1, n2, versor_out, reac='dt', n_sample=1e5):
 
@@ -27,7 +31,7 @@ def mono_iso(E1, E2, n1, n2, versor_out, reac='dt', n_sample=1e5):
 
     ver = np.vstack((vx1, vy1, vz1)).T
     v1 = ck.E_m2vmod(E1+m_in1, m_in1) * ver
-    v2 = ck.E_m2vmod(E2+m_in2, m_in2) * ver
+    v2 = ck.E_m2vmod(E2+m_in2, m_in2) * ver # some randomness would be good here
 
     print(con.mDc2, con.mnc2, con.mHe3c2)
     print(2.*con.mDc2 - con.mnc2 - con.mHe3c2)
@@ -40,6 +44,9 @@ def mono_iso(E1, E2, n1, n2, versor_out, reac='dt', n_sample=1e5):
             rea = ck.calc_reac(v_1, v_2, versor_out, reac=reac)
             E_out.append(rea.Ekin_prod1a)
             sigma_out.append(rea.sigma_diff_a)
+            if hasattr(rea, 'Ekin_prod1b'):
+                E_out.append(rea.Ekin_prod1b)
+                sigma_out.append(rea.sigma_diff_b)
     return np.array(E_out), np.array(sigma_out)
 
 
@@ -48,13 +55,20 @@ if __name__ == '__main__':
     import matplotlib.pylab as plt
 
     dens = 4.e19
-    Earr, sigma = mono_iso(0.03, 0.01, dens, dens, [1, 0, 0], reac='dt')
+    Earr, sigma = mono_iso(0.003, 0.01, dens, dens, [1, 0, 0], reac='dt')
 
     n_Ebins = 40
     nx = len(Earr)
-    Espec, Eedges = np.histogram(Earr, bins=n_Ebins)
+    Ecount, Eedges = np.histogram(Earr, bins=n_Ebins)
     Egrid = 0.5*(Eedges[1:] + Eedges[:-1])
     sigma_avg = np.nanmean(sigma)
-    print(sigma_avg)
-    plt.plot(Egrid, 16e7*sigma_avg*Espec/float(nx))
+
+    Espec = dens*dens*1e-31*sigma_avg*Ecount
+    print('Tot neut.: %12.4e 1/(m**3 s)' %(np.sum(Espec)*n_Ebins))
+    fig = plt.figure('Spectrum', (13, 8))
+    plt.subplot(1, 2, 1)
+    plt.plot(Egrid, Espec/float(nx))
+    
+    plt.subplot(1, 2, 2)
+    plt.plot(Earr, sigma)
     plt.show()
