@@ -9,7 +9,7 @@ def sigma_diff(E_in_MeV, mu_in, Z1=None, Z2=None, reac='dt'):
 
     if reac in ('dp', 'd3he', 'alphad', 'alphat', 'd3healphap'):
         return tabulated_sigma_diff(E_in_MeV, mu_in, reac=reac)
-    elif reac in ('dt', 'ddn'):
+    elif reac in ('dt', 'dd'):
         return legendre_sigma_diff(E_in_MeV, mu_in, reac=reac)
     elif Z1 is not None:
         return coulomb_sigma_diff(E_in_MeV, mu_in, Z1, Z2)
@@ -56,7 +56,7 @@ def legendre_sigma_diff(E_in_MeV, mu_in, reac='dt'):
 
     if reac == 'dt':
         cs = cs_tab.DT
-    elif reac == 'ddn':
+    elif reac == 'dd':
         cs = cs_tab.DDn3He
     n_leg = cs.leg_coeff.shape[1]
     data = interp1d(cs.En, cs.leg_coeff, axis=0)
@@ -70,7 +70,7 @@ def legendre_sigma_tot(E_in_MeV, Emin_MeV=5.e-4, reac='dt'):
 
     if reac == 'dt':
         cs = cs_tab.DT
-    elif reac == 'ddn':
+    elif reac == 'dd':
         cs = cs_tab.DDn3He
 
     if E_in_MeV < Emin_MeV:
@@ -134,7 +134,7 @@ if __name__ == '__main__':
 #    coul_alpha = coulomb_sigma_diff(E, mu_grid, 2, 2)
 
     for mu in mu_grid:
-        dd_theta.append(sigma_diff(E, mu, reac='ddn'))
+        dd_theta.append(sigma_diff(E, mu, reac='dd'))
         dt_theta.append(sigma_diff(E, mu, reac='dt'))
         coul_alpha.append(sigma_diff(E, mu, 2, 2))
 

@@ -4,15 +4,14 @@ import constants as con
 import calc_cross_section as cs
 import numba as nb
 
-
 fmt = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s: %(message)s', '%H:%M:%S')
 hnd = logging.StreamHandler()
 hnd.setFormatter(fmt)
-logger = logging.getLogger('trview')
+logger = logging.getLogger('kinema')
 logger.addHandler(hnd)
 logger.setLevel(logging.INFO)
 
-# v/E in c/c**2 units
+# v in c units
 
 def gamma(v):
     '''Compute relativistic gamma for given velocity as 1/sqrt(1 - |v|**2)'''
@@ -41,17 +40,17 @@ def v2Ekin(m, v):
     return m*gamma(v) - m
 
 
+def E_m2vmod(E_in, m_in):
+
+    gamma = E_in/m_in
+    return gamma2v(gamma)
+
+
 def E_m2pmod(E_in, m_in):
 
     gamma = E_in/m_in
     vmod = gamma2v(gamma)
     return m_in*gamma*vmod
-
-
-def qmom_norm(qmom):
-    '''Minkowski norm of quadrivector'''
-
-    return qmom[0]**2 - np.sum(qmom[1:]**2)
 
 
 def cos_the(v1, v2):
@@ -141,7 +140,7 @@ https://mathworld.wolfram.com/SpherePointPicking.html'''
     return np.array(x), np.array(y), np.array(z)
 
 
-class calc_kin:
+class calc_reac:
 
 
     def __init__(self, v1, v2, versor_out, reac='dt'):
@@ -152,17 +151,20 @@ class calc_kin:
         self.v1 = np.array(v1)
         self.v2 = np.array(v2)
         if reac == 'dt':
-            self.m_prod1 = con.mnc2
-            self.m_prod2 = con.mac2
             self.m_in1   = con.mDc2
             self.m_in2   = con.mTc2
-        elif reac == 'ddn':
+            self.m_prod1 = con.mnc2
+            self.m_prod2 = con.mac2
+        elif reac == 'dd':
             self.m_in1   = con.mDc2
             self.m_in2   = con.mDc2
             self.m_prod1 = con.mnc2
             self.m_prod2 = con.mHe3c2
         self.qmom_in1 = mv2qmom(self.m_in1, self.v1)
         self.qmom_in2 = mv2qmom(self.m_in2, self.v2)
+        self.vcm = (self.m_in1*self.v1 + self.m_in2*self.v2)/(self.m_in1 + self.m_in2)
+        self.Ekin = 0.5*self.m_in1*np.sum((self.v1 - self.vcm)**2) + \
+                    0.5*self.m_in2*np.sum((self.v2 - self.vcm)**2)
         qmom_tot = mv2qmom(self.m_in1, self.v1) + mv2qmom(self.m_in2, self.v2)
         E_tot = qmom_tot[0]
         p_tot = qmom_tot[1:]
@@ -174,20 +176,21 @@ class calc_kin:
         self.qmom_prod1a[0] = Eprod1[0]
         self.qmom_prod1a[1: ] = E_m2pmod(Eprod1[0], self.m_prod1)*self.versor_out
         self.qmom_prod2a = qmom_tot - self.qmom_prod1a
+        self.Ekin_prod1a = Eprod1[0] - self.m_prod1 # missing second root, prod1b
+        self.v1_out1a = self.qmom_prod1a[1: ]/self.qmom_prod1a[0]
+        self.cos_theta_a = cos_the(self.v1 - self.vcm, self.v1_out1a - self.vcm)
+# Ekin, cos_theta are relevant for the differential cross-sections
+        self.sigma_diff_a = cs.sigma_diff(self.Ekin, self.cos_theta_a)
         if len(Eprod1) == 2:
             self.qmom_prod1b = np.zeros(4)
             self.qmom_prod1b[0] = Eprod1[1]
             self.qmom_prod1b[1: ] = E_m2pmod(Eprod1[1], self.m_prod1)*self.versor_out
             self.qmom_prod2b = qmom_tot - self.qmom_prod1b
-
-        self.vcm = (self.m_in1*self.v1 + self.m_in2*self.v2)/(self.m_in1 + self.m_in2)
-        self.Ekin = 0.5*self.m_in1*np.sum((self.v1 - self.vcm)**2) + \
-                    0.5*self.m_in2*np.sum((self.v2 - self.vcm)**2)
-        self.v1_out1a = self.qmom_prod1a[1: ]/self.qmom_prod1a[0]
-        self.cos_theta = cos_the(self.v1 - self.vcm, self.v1_out1a - self.vcm)
-# Ekin, cos_theta are relevant for the differential cross-sections
-        self.sigma_diff = cs.sigma_diff(self.Ekin, self.cos_theta)
-
+            self.Ekin_prod1b = Eprod1[1] - self.m_prod1 # missing second root, prod1b
+            self.v1_out1b = self.qmom_prod1b[1: ]/self.qmom_prod1b[0]
+            self.cos_theta_b = cos_the(self.v1 - self.vcm, self.v1_out1b - self.vcm)
+            self.sigma_diff_b = cs.sigma_diff(self.Ekin, self.cos_theta_b)
+ 
 
 class out_versor_scan:
 
@@ -205,7 +208,7 @@ class out_versor_scan:
             self.m_in2   = con.mTc2
             self.m_prod1 = con.mnc2
             self.m_prod2 = con.mac2
-        elif reac == 'ddn':
+        elif reac == 'dd':
             self.m_in1   = con.mDc2
             self.m_in2   = con.mDc2
             self.m_prod1 = con.mnc2
@@ -249,8 +252,9 @@ if __name__ == '__main__':
     Egrid = 0.5*(Eedges[1:] + Eedges[:-1])
 
     versor_out = [1, 1, 0]
-    kin = calc_kin(v1, v2, versor_out, reac='dt')
-    print('Cross section', kin.sigma_diff)
+    kin = calc_reac(v1, v2, versor_out, reac='dt')
+    print('Cross section', kin.sigma_diff_a)
+    print('Cross section root2', kin.sigma_diff_b)
 
 #------
 # Plots

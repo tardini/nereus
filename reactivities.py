@@ -16,7 +16,7 @@ coeff_d3he   = [5.51036e-10, 6.41918e-3, -202896e-3, -1.9108e-5,  1.35776e-4,   
 
 mDc2_keV = 1e3*con.mDc2
 mTc2_keV = 1e3*con.mTc2
-mHe3c2_keV = 1e3*con.mTc2
+mHe3c2_keV = 1e3*con.mHe3c2
 
 def react(T, m1_c2=mDc2_keV, m2_c2=mDc2_keV, Z1=con.Z_D, Z2=con.Z_D, coeff=coeff_ddn3he):
     '''Input:
