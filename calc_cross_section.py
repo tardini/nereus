@@ -4,11 +4,22 @@ from constants import epsilon0, echarge
 import cross_section_tables as cs_tab
 
 
-def coulomb_sigma_diff(E_in_MeV, mu_in, q1, q2):
+def sigma_diff(E_in_MeV, mu_in, Z1=None, Z2=None, reac='dt'):
+    '''General method redirecting to the relevant reaction method'''
+
+    if reac in ('dp', 'd3he', 'alphad', 'alphat', 'd3healphap'):
+        return tabulated_sigma_diff(E_in_MeV, mu_in, reac=reac)
+    elif reac in ('dt', 'ddn'):
+        return legendre_sigma_diff(E_in_MeV, mu_in, reac=reac)
+    elif Z1 is not None:
+        return coulomb_sigma_diff(E_in_MeV, mu_in, Z1, Z2)
+
+
+def coulomb_sigma_diff(E_in_MeV, mu_in, Z1, Z2):
     '''q1, q2 are the electric charge numbers of the scattering particles'''
 
-    q1 *= echarge
-    q2 *= echarge
+    q1 = Z1*echarge
+    q2 = Z2*echarge
     E_in_J = 1e6*echarge*E_in_MeV
     if mu_in == 1 or E_in_MeV == 0:
         return 0
@@ -20,6 +31,7 @@ def coulomb_sigma_diff(E_in_MeV, mu_in, q1, q2):
 
 
 def tabulated_sigma_diff(E_in_MeV, mu_in, reac='dp'):
+    '''Performing interp2d on full cross-sectoin table(E, mu)'''
 
     from scipy.interpolate import interp2d
 
@@ -27,8 +39,15 @@ def tabulated_sigma_diff(E_in_MeV, mu_in, reac='dp'):
         cs = cs_tab.DP
     elif reac == 'd3he':
         cs = cs_tab.D3He
+    elif reac == 'alphad':
+        cs = cs_tab.alphad
+    elif reac == 'alphat':
+        cs = cs_tab.alphat
+    elif reac == 'd3healphap':
+        cs = cs_tab.D3HeAlphaP
     f = interp2d(cs.En, cs.mu, cs.sigma_diff, kind='linear')
-    return f(E_in_MeV, mu_in)
+    res = f(E_in_MeV, mu_in).T
+    return np.squeeze(res)
 
 
 def legendre_sigma_diff(E_in_MeV, mu_in, reac='dt'):
@@ -37,7 +56,7 @@ def legendre_sigma_diff(E_in_MeV, mu_in, reac='dt'):
 
     if reac == 'dt':
         cs = cs_tab.DT
-    elif reac == 'dd':
+    elif reac == 'ddn':
         cs = cs_tab.DDn3He
     n_leg = cs.leg_coeff.shape[1]
     data = interp1d(cs.En, cs.leg_coeff, axis=0)
@@ -51,7 +70,7 @@ def legendre_sigma_tot(E_in_MeV, Emin_MeV=5.e-4, reac='dt'):
 
     if reac == 'dt':
         cs = cs_tab.DT
-    elif reac == 'dd':
+    elif reac == 'ddn':
         cs = cs_tab.DDn3He
 
     if E_in_MeV < Emin_MeV:
@@ -93,7 +112,7 @@ if __name__ == '__main__':
     E = 1
     mu = -1
     print('DP cross-section for E=%8.4f MeV, mu=%6.3f:' %(E, mu))
-    dp_diff = tabulated_sigma_diff(E, mu, reac='dp')
+    dp_diff = sigma_diff(E, mu, reac='dp')
     print('%12.4e millibarn' %dp_diff)
 
 # Differential Coulomnb alpha scattering
@@ -103,46 +122,51 @@ if __name__ == '__main__':
     coul_diff = coulomb_sigma_diff(E, mu, 2, 2)
     print('%12.4e millibarn' %coul_diff)
 
+    E = 0.85
     
     theta = np.linspace(0, np.pi, 61)
     mu_grid = np.cos(theta)
     dd_theta = []
     dt_theta = []
-    d3he_theta = []
+    unsort = np.argsort(np.argsort(mu_grid))
+    d3he_theta = sigma_diff([E, 2*E], mu_grid, reac='d3he')
     coul_alpha = []
+#    coul_alpha = coulomb_sigma_diff(E, mu_grid, 2, 2)
 
-    E = 0.45
     for mu in mu_grid:
-        dd_theta.append(legendre_sigma_diff(E, mu, reac='dd'))
-        dt_theta.append(legendre_sigma_diff(E, mu, reac='dt'))
-        d3he_theta.append(tabulated_sigma_diff(E, mu, reac='d3he'))
-        coul_alpha.append(coulomb_sigma_diff(E, mu, 2, 2))
+        dd_theta.append(sigma_diff(E, mu, reac='ddn'))
+        dt_theta.append(sigma_diff(E, mu, reac='dt'))
+        coul_alpha.append(sigma_diff(E, mu, 2, 2))
+
+# Plots
+
     plt.figure('Cross-sections', (19, 6))
 
     plt.subplot(1, 4, 1)
-    plt.title('DD cross-section(theta)')
+    plt.title('DD')
     plt.plot(np.degrees(theta), dd_theta)
     plt.xlim([0, 180])
     plt.xlabel('Angle [deg]')
     plt.ylabel(r'$\frac{d\sigma}{d\Omega}$ [mbarn]')
 
     plt.subplot(1, 4, 2)
-    plt.title('DT cross-section(theta)')
+    plt.title('DT')
     plt.plot(np.degrees(theta), dt_theta)
     plt.xlim([0, 180])
     plt.xlabel('Angle [deg]')
     plt.ylabel(r'$\frac{d\sigma}{d\Omega}$ [mbarn]')
 
     plt.subplot(1, 4, 3)
-    plt.title('Coulomb alpha-alpha cross-section(theta)')
+    plt.title(r'Coulomb $\alpha-\alpha$')
     plt.semilogy(np.degrees(theta), coul_alpha)
     plt.xlim([0, 180])
     plt.xlabel('Angle [deg]')
     plt.ylabel(r'$\frac{d\sigma}{d\Omega}$ [mbarn]')
 
     plt.subplot(1, 4, 4)
-    plt.title('D3He cross-section(theta)')
-    plt.plot(np.degrees(theta), d3he_theta)
+    plt.title('D3He')
+    plt.plot(np.degrees(theta), d3he_theta[0, unsort])
+    plt.plot(np.degrees(theta), d3he_theta[1, unsort])
     plt.xlim([0, 180])
     plt.xlabel('Angle [deg]')
     plt.ylabel(r'$\frac{d\sigma}{d\Omega}$ [mbarn]')

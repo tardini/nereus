@@ -1,7 +1,7 @@
 import sys, logging
 import numpy as np
 import constants as con
-import cross_sections as cs
+import calc_cross_section as cs
 import numba as nb
 
 
@@ -46,12 +46,6 @@ def E_m2pmod(E_in, m_in):
     gamma = E_in/m_in
     vmod = gamma2v(gamma)
     return m_in*gamma*vmod
-
-
-def v_cm(m1, m2, v1, v2):
-    '''Classical'''
-
-    return (m1*v1 + m2*v2)/(m1 + m2)
 
 
 def qmom_norm(qmom):
@@ -154,7 +148,9 @@ class calc_kin:
 
 
         versor_out = np.array(versor_out, dtype=np.float32)
-        versor_out /= np.linalg.norm(versor_out)
+        self.versor_out = versor_out/np.linalg.norm(versor_out)
+        self.v1 = np.array(v1)
+        self.v2 = np.array(v2)
         if reac == 'dt':
             self.m_prod1 = con.mnc2
             self.m_prod2 = con.mac2
@@ -165,24 +161,32 @@ class calc_kin:
             self.m_in2   = con.mDc2
             self.m_prod1 = con.mnc2
             self.m_prod2 = con.mHe3c2
-        self.qmom_in1 = mv2qmom(self.m_in1, v1)
-        self.qmom_in2 = mv2qmom(self.m_in2, v2)
-        qmom_tot = mv2qmom(self.m_in1, v1) + mv2qmom(self.m_in2, v2)
+        self.qmom_in1 = mv2qmom(self.m_in1, self.v1)
+        self.qmom_in2 = mv2qmom(self.m_in2, self.v2)
+        qmom_tot = mv2qmom(self.m_in1, self.v1) + mv2qmom(self.m_in2, self.v2)
         E_tot = qmom_tot[0]
         p_tot = qmom_tot[1:]
         A = 0.5*(E_tot**2 - np.sum(p_tot**2) + self.m_prod1**2 - self.m_prod2**2)/E_tot
-        B = np.dot(p_tot, versor_out)/E_tot   # Well < 1
+        B = np.dot(p_tot, self.versor_out)/E_tot   # Well < 1
 
         Eprod1 = E_prod1(self.m_prod1, A, B)
         self.qmom_prod1a = np.zeros(4)
         self.qmom_prod1a[0] = Eprod1[0]
-        self.qmom_prod1a[1: ] = E_m2pmod(Eprod1[0], self.m_prod1)*versor_out
+        self.qmom_prod1a[1: ] = E_m2pmod(Eprod1[0], self.m_prod1)*self.versor_out
         self.qmom_prod2a = qmom_tot - self.qmom_prod1a
         if len(Eprod1) == 2:
             self.qmom_prod1b = np.zeros(4)
             self.qmom_prod1b[0] = Eprod1[1]
-            self.qmom_prod1b[1: ] = E_m2pmod(Eprod1[1], self.m_prod1)*versor_out
+            self.qmom_prod1b[1: ] = E_m2pmod(Eprod1[1], self.m_prod1)*self.versor_out
             self.qmom_prod2b = qmom_tot - self.qmom_prod1b
+
+        self.vcm = (self.m_in1*self.v1 + self.m_in2*self.v2)/(self.m_in1 + self.m_in2)
+        self.Ekin = 0.5*self.m_in1*np.sum((self.v1 - self.vcm)**2) + \
+                    0.5*self.m_in2*np.sum((self.v2 - self.vcm)**2)
+        self.v1_out1a = self.qmom_prod1a[1: ]/self.qmom_prod1a[0]
+        self.cos_theta = cos_the(self.v1 - self.vcm, self.v1_out1a - self.vcm)
+# Ekin, cos_theta are relevant for the differential cross-sections
+        self.sigma_diff = cs.sigma_diff(self.Ekin, self.cos_theta)
 
 
 class out_versor_scan:
@@ -229,7 +233,7 @@ if __name__ == '__main__':
 
     import matplotlib.pylab as plt
 
-    nsamp1 = 2e6
+    nsamp1 = 1e6
     nsamp2 = 1e6 #5e6
     v0 = 1e-2
     v1 = [v0, v0, v0]
@@ -246,6 +250,7 @@ if __name__ == '__main__':
 
     versor_out = [1, 1, 0]
     kin = calc_kin(v1, v2, versor_out, reac='dt')
+    print('Cross section', kin.sigma_diff)
 
 #------
 # Plots
