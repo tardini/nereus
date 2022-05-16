@@ -88,7 +88,6 @@ def uniform_sample_versor(n_sample=1e6):
     '''Regular theta grid, phi-grid size proportional to cos(theta)'''
 
     n_grid = int(np.sqrt(2*n_sample))
-    print('n_grid2=', n_grid)
     theta_grid = np.linspace(-0.5*np.pi, 0.5*np.pi, n_grid+1)
     theta_grid = theta_grid[:-1] + 0.5*(theta_grid[1] - theta_grid[0])
 
@@ -112,7 +111,6 @@ def uniform_sample_versor2(n_sample=1e6):
 https://mathworld.wolfram.com/SpherePointPicking.html'''
 
     n_grid = int(np.sqrt(np.sqrt(float(np.pi*n_sample))))
-    print('n_grid=', n_grid)
     xgrid = np.linspace(-1, 1, n_grid+1)
     xgrid = xgrid[:-1] + 0.5*(xgrid[1] - xgrid[0])
 
@@ -143,7 +141,7 @@ https://mathworld.wolfram.com/SpherePointPicking.html'''
 class calc_reac:
 
 
-    def __init__(self, v1, v2, versor_out, reac='dt'):
+    def __init__(self, v1, v2, versor_out, reac):
 
 
         versor_out = np.array(versor_out, dtype=np.float32)
@@ -165,7 +163,7 @@ class calc_reac:
         self.vcm = (self.m_in1*self.v1 + self.m_in2*self.v2)/(self.m_in1 + self.m_in2)
         self.Ekin = 0.5*self.m_in1*np.sum((self.v1 - self.vcm)**2) + \
                     0.5*self.m_in2*np.sum((self.v2 - self.vcm)**2)
-        qmom_tot = mv2qmom(self.m_in1, self.v1) + mv2qmom(self.m_in2, self.v2)
+        qmom_tot = self.qmom_in1 + self.qmom_in2
         E_tot = qmom_tot[0]
         p_tot = qmom_tot[1:]
         A = 0.5*(E_tot**2 - np.sum(p_tot**2) + self.m_prod1**2 - self.m_prod2**2)/E_tot
@@ -176,9 +174,11 @@ class calc_reac:
         self.qmom_prod1a[0] = Eprod1[0]
         self.qmom_prod1a[1: ] = E_m2pmod(Eprod1[0], self.m_prod1)*self.versor_out
         self.qmom_prod2a = qmom_tot - self.qmom_prod1a
-        self.Ekin_prod1a = Eprod1[0] - self.m_prod1 # missing second root, prod1b
-        self.v1_out1a = self.qmom_prod1a[1: ]/self.qmom_prod1a[0]
-        self.cos_theta_a = cos_the(self.v1 - self.vcm, self.v1_out1a - self.vcm)
+        self.Ekin_prod1a = self.qmom_prod1a[0] - self.m_prod1
+        self.Ekin_prod2a = self.qmom_prod2a[0] - self.m_prod2
+        self.v_out1a = self.qmom_prod1a[1: ]/self.qmom_prod1a[0]
+        self.v_out2a = self.qmom_prod2a[1: ]/self.qmom_prod2a[0]
+        self.cos_theta_a = cos_the(self.v1 - self.vcm, self.v_out1a - self.vcm)
 # Ekin, cos_theta are relevant for the differential cross-sections
         self.sigma_diff_a = cs.sigma_diff(self.Ekin, self.cos_theta_a)
         if len(Eprod1) == 2:
@@ -186,15 +186,17 @@ class calc_reac:
             self.qmom_prod1b[0] = Eprod1[1]
             self.qmom_prod1b[1: ] = E_m2pmod(Eprod1[1], self.m_prod1)*self.versor_out
             self.qmom_prod2b = qmom_tot - self.qmom_prod1b
-            self.Ekin_prod1b = Eprod1[1] - self.m_prod1 # missing second root, prod1b
-            self.v1_out1b = self.qmom_prod1b[1: ]/self.qmom_prod1b[0]
-            self.cos_theta_b = cos_the(self.v1 - self.vcm, self.v1_out1b - self.vcm)
+            self.Ekin_prod1b = self.qmom_prod1b[0] - self.m_prod1
+            self.Ekin_prod2b = self.qmom_prod2b[0] - self.m_prod2
+            self.v_out1b = self.qmom_prod1b[1: ]/self.qmom_prod1b[0]
+            self.v_out2b = self.qmom_prod2b[1: ]/self.qmom_prod2b[0]
+            self.cos_theta_b = cos_the(self.v1 - self.vcm, self.v_out1b - self.vcm)
             self.sigma_diff_b = cs.sigma_diff(self.Ekin, self.cos_theta_b)
  
 
 class out_versor_scan:
 
-    def __init__(self, v1, v2, reac='dt', n_sample=1000, sample_flag=1):
+    def __init__(self, v1, v2, reac, n_sample=1000, sample_flag=1):
 
         '''alpha means just first reaction product, not alpha particle'''
 
@@ -241,8 +243,8 @@ if __name__ == '__main__':
     v0 = 1e-2
     v1 = [v0, v0, v0]
     v2 = [-0.5*v0, 0, 0]
-    scan1 = out_versor_scan(v1, v2, reac='dt', n_sample=nsamp1, sample_flag=2)
-    scan2 = out_versor_scan(v1, v2, reac='dt', n_sample=nsamp2, sample_flag=1)
+    scan1 = out_versor_scan(v1, v2, 'dt', n_sample=nsamp1, sample_flag=2)
+    scan2 = out_versor_scan(v1, v2, 'dt', n_sample=nsamp2, sample_flag=1)
     logger.info('Plotting Eneut')
     n_Ebins = 80
     count1b, Eedges = np.histogram(scan1.E_back, bins=n_Ebins)
@@ -252,7 +254,7 @@ if __name__ == '__main__':
     Egrid = 0.5*(Eedges[1:] + Eedges[:-1])
 
     versor_out = [1, 1, 0]
-    kin = calc_reac(v1, v2, versor_out, reac='dt')
+    kin = calc_reac(v1, v2, versor_out, 'dt')
     print('Cross section', kin.sigma_diff_a)
     print('Cross section root2', kin.sigma_diff_b)
 
