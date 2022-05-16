@@ -76,14 +76,12 @@ def legendre_sigma_diff(E_in_MeV, mu_in, reac='dt'):
         cs_leg[:, jleg] = eval_legendre(jleg, mu_in)
     cs_sum = np.sum(cs_leg*data_E, axis=1)
 
-    leg_tot = legendre_sigma_tot1d(E_in_MeV, reac=reac)
-#    leg_tot = np.zeros_like(cs_sum)
-#    for jE, E in enumerate(E_in_MeV):
-#        leg_tot[jE] = legendre_sigma_tot(E, reac=reac)
+    leg_tot = legendre_sigma_tot(E_in_MeV, reac=reac)
+
     return np.squeeze(leg_tot*cs_sum/(4*np.pi*data_E[:, 0]))
 
 
-def legendre_sigma_tot1d(E_in_MeV, Emin_MeV=5.e-4, reac='dt'):
+def legendre_sigma_tot(E_in_MeV, Emin_MeV=5.e-4, reac='dt'):
 
     if reac == 'dt':
         cs = cs_tab.DT
@@ -111,7 +109,7 @@ def legendre_sigma_tot1d(E_in_MeV, Emin_MeV=5.e-4, reac='dt'):
     return leg_out
 
 
-def legendre_sigma_tot(E_in_MeV, Emin_MeV=5.e-4, reac='dt'):
+def legendre_sigma_tot2(E_in_MeV, Emin_MeV=5.e-4, reac='dt'):
 
     if reac == 'dt':
         cs = cs_tab.DT
