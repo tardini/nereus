@@ -25,7 +25,7 @@ def coulomb_sigma_diff(E_in_MeV, mu_in, Z1, Z2):
     E_in_J = 1e6*echarge*E_in_MeV
     k = 1./(4*np.pi*epsilon0)
     coul = q1*q2*k
-    s = coul/np.outer(1 - mu_in, E_in_J) # denominator=0 yeilds nan, as wished
+    s = coul/np.outer(1 - mu_in, E_in_J) # denominator=0 yields nan, as wished
     cross_sec = 0.25* s**2 * 10**31 # 10**31: m**2 -> mbarn
     return np.squeeze(cross_sec)
 
@@ -119,7 +119,7 @@ if __name__ == '__main__':
     E = 1
     mu = -1
     print('DT cross-section for E=%8.4f MeV, mu=%6.3f:' %(E, mu))
-    dt_diff = legendre_sigma_diff(E, mu, reac='dt')
+    dt_diff = sigma_diff(E, mu, reac='dt')
     print('%12.4e millibarn' %dt_diff)
 
 # Differential tab-sigma_diff, DP:
@@ -133,7 +133,7 @@ if __name__ == '__main__':
     E = 3.5
     mu = -1
     print('Coul cross-section for E=%8.4f MeV, mu=%6.3f:' %(E, mu))
-    coul_diff = coulomb_sigma_diff(E, mu, 2, 2)
+    coul_diff = sigma_diff(E, mu, 'coul', Z1=2, Z2=2)
     print('%12.4e millibarn' %coul_diff)
 
     E = 0.3
