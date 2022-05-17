@@ -11,13 +11,13 @@ logger = logging.getLogger('cross-sect')
 logger.addHandler(hnd)
 logger.setLevel(logging.INFO)
 
-def sigma_diff(E_in_MeV, mu_in, Z1=None, Z2=None, reac='dt'):
+def sigma_diff(E_in_MeV, mu_in, reac, Z1=None, Z2=None):
     '''General method redirecting to the relevant reaction method'''
 
     if reac in ('dp', 'd3he', 'alphad', 'alphat', 'd3healphap'):
-        return tabulated_sigma_diff(E_in_MeV, mu_in, reac=reac)
+        return tabulated_sigma_diff(E_in_MeV, mu_in, reac)
     elif reac in ('dt', 'dd'):
-        return legendre_sigma_diff(E_in_MeV, mu_in, reac=reac)
+        return legendre_sigma_diff(E_in_MeV, mu_in, reac)
     elif Z1 is not None:
         return coulomb_sigma_diff(E_in_MeV, mu_in, Z1, Z2)
 
@@ -37,7 +37,7 @@ def coulomb_sigma_diff(E_in_MeV, mu_in, Z1, Z2):
     return cross_sec
 
 
-def tabulated_sigma_diff(E_in_MeV, mu_in, reac='dp'):
+def tabulated_sigma_diff(E_in_MeV, mu_in, reac):
     '''Performing interp2d on full cross-sectoin table(E, mu)'''
 
     from scipy.interpolate import interp2d
@@ -57,7 +57,7 @@ def tabulated_sigma_diff(E_in_MeV, mu_in, reac='dp'):
     return np.squeeze(res)
 
 
-def legendre_sigma_diff(E_in_MeV, mu_in, reac='dt'):
+def legendre_sigma_diff(E_in_MeV, mu_in, reac):
 
     from scipy.special import eval_legendre
 
@@ -76,12 +76,12 @@ def legendre_sigma_diff(E_in_MeV, mu_in, reac='dt'):
         cs_leg[:, jleg] = eval_legendre(jleg, mu_in)
     cs_sum = np.sum(cs_leg*data_E, axis=1)
 
-    leg_tot = legendre_sigma_tot(E_in_MeV, reac=reac)
+    leg_tot = legendre_sigma_tot(E_in_MeV, reac)
 
     return np.squeeze(leg_tot*cs_sum/(4*np.pi*data_E[:, 0]))
 
 
-def legendre_sigma_tot(E_in_MeV, Emin_MeV=5.e-4, reac='dt'):
+def legendre_sigma_tot(E_in_MeV, reac, Emin_MeV=5.e-4):
 
     if reac == 'dt':
         cs = cs_tab.DT
@@ -107,29 +107,6 @@ def legendre_sigma_tot(E_in_MeV, Emin_MeV=5.e-4, reac='dt'):
     leg_out[ind_bosch2] = num_ahi[ind_bosch2]/(den1_ahi[ind_bosch2]*den2[ind_bosch2])
     
     return leg_out
-
-
-def legendre_sigma_tot2(E_in_MeV, Emin_MeV=5.e-4, reac='dt'):
-
-    if reac == 'dt':
-        cs = cs_tab.DT
-    elif reac == 'dd':
-        cs = cs_tab.DDn3He
-
-    if E_in_MeV < Emin_MeV:
-        return 0
-    if E_in_MeV < cs.BoschLiskBound:
-        E_keV = 1e3*E_in_MeV
-        if E_in_MeV <= cs.loHiBound:
-            num  =  cs.A[0] + E_keV*(cs.A[1] + E_keV*(cs.A[2] + E_keV*(cs.A[3] + E_keV*cs.A[4])))
-            den1 =       1. + E_keV*(cs.B[0] + E_keV*(cs.B[1] + E_keV*(cs.B[2] + E_keV*cs.B[3])))
-        else:
-            num  =  cs.Ahi[0] + E_keV*(cs.Ahi[1] + E_keV*(cs.Ahi[2] + E_keV*(cs.Ahi[3] + E_keV*cs.Ahi[4])))
-            den1 =         1. + E_keV*(cs.Bhi[0] + E_keV*(cs.Bhi[1] + E_keV*(cs.Bhi[2] + E_keV*cs.Bhi[3])))
-        den2 = E_keV * np.exp(cs.Bg/np.sqrt(E_keV))
-        return num/(den1*den2) # millibarn
-    else:
-        return np.interp(E_in_MeV, cs.Etot_MeV, cs.y)
 
 
 if __name__ == '__main__':
