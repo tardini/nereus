@@ -2,6 +2,7 @@ import scipy.constants as sc
 
 con = sc.physical_constants
 amu = con['atomic mass constant energy equivalent in MeV'][0]
+mpc2 = con['proton mass energy equivalent in MeV'][0]
 mDc2 = con['deuteron mass energy equivalent in MeV'][0]
 mTc2 = con['triton mass energy equivalent in MeV'][0]
 mnc2 = con['neutron mass energy equivalent in MeV'][0]
@@ -13,9 +14,22 @@ echarge = sc.elementary_charge
 c = sc.c
 Z_D = 1
 
-if __name__ == '__main__':
-    print('neut. mass in Mev: %12.4e' %mnc2)
-    print('mass_D in Mev: %12.4e' %mDc2)
-    print('mass_T in Mev: %12.4e' %mTc2)
-    print('mass_He3 in Mev: %12.4e' %mHe3c2)
-    print(mDc2 + mDc2 - mnc2 - mHe3c2)
+class mass:
+    pass
+
+m = {}
+for reac in ('dp', 'd3he', 'alphad', 'alphat', 'd3healphap', 'dt', 'dd'):
+    m[reac] = mass()
+
+m['dp'].in1 = mpc2
+m['dp'].in2 = mDc2
+
+m['dd'].in1   = mDc2
+m['dd'].in2   = mDc2
+m['dd'].prod1 = mnc2
+m['dd'].prod2 = mHe3c2
+
+m['dt'].in1   = mDc2
+m['dt'].in2   = mTc2
+m['dt'].prod1 = mnc2
+m['dt'].prod2 = mac2

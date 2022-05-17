@@ -94,25 +94,21 @@ def convolve_dists(v1_all, v2_all, versor_out, reac):
 
 def mono_iso(E1, E2, versor_out, reac, n_sample=1e5):
 
-    if reac == 'dt':
-        m_in1   = con.mDc2
-        m_in2   = con.mTc2
-    elif reac == 'dd':
-        m_in1   = con.mDc2
-        m_in2   = con.mDc2
+    m_in1 = con.m[reac].in1
+    m_in2 = con.m[reac].in2
 
     versor_out = np.array(versor_out, dtype=np.float32)
     versor_out /= np.linalg.norm(versor_out)
     vx1, vy1, vz1 = ck.uniform_sample_versor(n_sample=n_sample)
 
     ver = np.vstack((vx1, vy1, vz1)).T
-    v1 = ck.E_m2vmod(E1+m_in1, m_in1) * ver
-    v2 = ck.E_m2vmod(E2+m_in2, m_in2) * ver # some randomness would be good here
+    v1 = ck.E_m2vmod(E1 + m_in1, m_in1) * ver
+    v2 = ck.E_m2vmod(E2 + m_in2, m_in2) * ver # some randomness would be good here
 
     logger.info('Convolving distributions')
     Earr, Ekin, cos_the = convolve_dists(v1, v2, versor_out, reac)
     logger.info('Getting cross-sections')
-    weight = cs.sigma_diff(Ekin, cos_the, reac)
+    weight = cs.sigma_diff(Ekin, cos_the, reac, paired=True)
 
     return Earr, weight
 

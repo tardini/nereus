@@ -4,13 +4,13 @@ from constants import epsilon0, echarge
 import cross_section_tables as cs_tab
 
 
-def sigma_diff(E_in_MeV, mu_in, reac, Z1=None, Z2=None):
+def sigma_diff(E_in_MeV, mu_in, reac, Z1=None, Z2=None, paired=False):
     '''General method redirecting to the relevant reaction method'''
 
     if reac in ('dp', 'd3he', 'alphad', 'alphat', 'd3healphap'):
-        return tabulated_sigma_diff(E_in_MeV, mu_in, reac)
+        return tabulated_sigma_diff(E_in_MeV, mu_in, reac, paired=paired)
     elif reac in ('dt', 'dd'):
-        return legendre_sigma_diff(E_in_MeV, mu_in, reac)
+        return legendre_sigma_diff(E_in_MeV, mu_in, reac, paired=paired)
     elif Z1 is not None:
         return coulomb_sigma_diff(E_in_MeV, mu_in, Z1, Z2)
 
@@ -30,7 +30,7 @@ def coulomb_sigma_diff(E_in_MeV, mu_in, Z1, Z2):
     return np.squeeze(cross_sec)
 
 
-def tabulated_sigma_diff(E_in_MeV, mu_in, reac):
+def tabulated_sigma_diff(E_in_MeV, mu_in, reac, paired=False):
     '''Performing interp2d on full cross-sectoin table(E, mu)'''
 
     from scipy.interpolate import interp2d
@@ -48,14 +48,17 @@ def tabulated_sigma_diff(E_in_MeV, mu_in, reac):
     f = interp2d(cs.En, cs.mu, cs.sigma_diff, kind='linear')
     E_in_MeV = np.atleast_1d(E_in_MeV)
     mu_in    = np.atleast_1d(mu_in)
-    res = f(E_in_MeV, mu_in).T
-    if len(mu_in > 1):
-        unsorted = np.argsort(np.argsort(mu_in))
-        res = res[..., unsorted]
+    if paired:
+        res = f(E_in_MeV, mu_in)
+    else:
+        res = f(E_in_MeV, mu_in).T
+        if len(mu_in > 1):
+            unsorted = np.argsort(np.argsort(mu_in))
+            res = res[..., unsorted]
     return np.squeeze(res)
 
 
-def legendre_sigma_diff(E_in_MeV, mu_in, reac):
+def legendre_sigma_diff(E_in_MeV, mu_in, reac, paired=False):
 
     from scipy.special import eval_legendre
 
@@ -72,7 +75,11 @@ def legendre_sigma_diff(E_in_MeV, mu_in, reac):
     cs_leg = np.zeros((len(mu_in), n_leg))
     for jleg in range(n_leg):
         cs_leg[:, jleg] = eval_legendre(jleg, mu_in)
-    cs_sum = np.tensordot(cs_leg, data_E, axes=([1, 1]))
+    if paired:
+        print(cs_leg.shape, data_E.shape)
+        cs_sum = np.sum(cs_leg*data_E, axis=1)
+    else:
+        cs_sum = np.tensordot(cs_leg, data_E, axes=([1, 1]))
 
     leg_tot = legendre_sigma_tot(E_in_MeV, reac)
 

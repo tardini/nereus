@@ -148,16 +148,12 @@ class calc_reac:
         self.versor_out = versor_out/np.linalg.norm(versor_out)
         self.v1 = np.array(v1)
         self.v2 = np.array(v2)
-        if reac == 'dt':
-            self.m_in1   = con.mDc2
-            self.m_in2   = con.mTc2
-            self.m_prod1 = con.mnc2
-            self.m_prod2 = con.mac2
-        elif reac == 'dd':
-            self.m_in1   = con.mDc2
-            self.m_in2   = con.mDc2
-            self.m_prod1 = con.mnc2
-            self.m_prod2 = con.mHe3c2
+        self.m_in1   = con.m[reac].in1
+        self.m_in2   = con.m[reac].in2
+        self.m_prod1 = con.m[reac].prod1
+        self.m_prod2 = con.m[reac].prod2
+        self.reac = reac
+
         self.qmom_in1 = mv2qmom(self.m_in1, self.v1)
         self.qmom_in2 = mv2qmom(self.m_in2, self.v2)
         self.vcm = (self.m_in1*self.v1 + self.m_in2*self.v2)/(self.m_in1 + self.m_in2)
@@ -205,16 +201,13 @@ class out_versor_scan:
             self.x, self.y, self.z = uniform_sample_versor(n_sample=n_sample)
         elif sample_flag == 2:
             self.x, self.y, self.z = uniform_sample_versor2(n_sample=n_sample)
-        if reac == 'dt':
-            self.m_in1   = con.mDc2
-            self.m_in2   = con.mTc2
-            self.m_prod1 = con.mnc2
-            self.m_prod2 = con.mac2
-        elif reac == 'dd':
-            self.m_in1   = con.mDc2
-            self.m_in2   = con.mDc2
-            self.m_prod1 = con.mnc2
-            self.m_prod2 = con.mHe3c2
+
+        self.m_in1   = con.m[reac].in1
+        self.m_in2   = con.m[reac].in2
+        self.m_prod1 = con.m[reac].prod1
+        self.m_prod2 = con.m[reac].prod2
+        self.reac = reac
+
         nx = len(self.x)
         print(nx)
         logger.info('Compute Eneut')
