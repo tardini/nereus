@@ -46,7 +46,12 @@ def tabulated_sigma_diff(E_in_MeV, mu_in, reac):
     elif reac == 'd3healphap':
         cs = cs_tab.D3HeAlphaP
     f = interp2d(cs.En, cs.mu, cs.sigma_diff, kind='linear')
+    E_in_MeV = np.atleast_1d(E_in_MeV)
+    mu_in    = np.atleast_1d(mu_in)
     res = f(E_in_MeV, mu_in).T
+    if len(mu_in > 1):
+        unsorted = np.argsort(np.argsort(mu_in))
+        res = res[..., unsorted]
     return np.squeeze(res)
 
 
@@ -143,7 +148,6 @@ if __name__ == '__main__':
     Egrid = [E, 2*E]
     dd_theta = sigma_diff(Egrid, mu_grid, 'dd')
     dt_theta = sigma_diff(Egrid, mu_grid, 'dt')
-    unsort = np.argsort(np.argsort(mu_grid))
     d3he_theta = sigma_diff(Egrid, mu_grid, reac='d3he')
     coul_alpha = sigma_diff(Egrid, mu_grid, 'coul', 2, 2)
 
@@ -174,8 +178,8 @@ if __name__ == '__main__':
 
     plt.subplot(1, 4, 4)
     plt.title('D3He')
-    plt.plot(np.degrees(theta), d3he_theta[0, unsort], label='%5.2f MeV' %E)
-    plt.plot(np.degrees(theta), d3he_theta[1, unsort], label='%5.2f MeV' %(2*E))
+    plt.plot(np.degrees(theta), d3he_theta[0], label='%5.2f MeV' %E)
+    plt.plot(np.degrees(theta), d3he_theta[1], label='%5.2f MeV' %(2*E))
     plt.xlim([0, 180])
     plt.xlabel('Angle [deg]')
     plt.ylabel(r'$\frac{d\sigma}{d\Omega}$ [mbarn]')
