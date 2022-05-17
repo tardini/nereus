@@ -1,15 +1,8 @@
-import logging
 import numpy as np
 from scipy.interpolate import interp1d
 from constants import epsilon0, echarge
 import cross_section_tables as cs_tab
 
-fmt = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s: %(message)s', '%H:%M:%S')
-hnd = logging.StreamHandler()
-hnd.setFormatter(fmt)
-logger = logging.getLogger('cross-sect')
-logger.addHandler(hnd)
-logger.setLevel(logging.INFO)
 
 def sigma_diff(E_in_MeV, mu_in, reac, Z1=None, Z2=None):
     '''General method redirecting to the relevant reaction method'''
@@ -27,14 +20,14 @@ def coulomb_sigma_diff(E_in_MeV, mu_in, Z1, Z2):
 
     q1 = Z1*echarge
     q2 = Z2*echarge
+    E_in_MeV = np.atleast_1d(E_in_MeV)
+    mu_in    = np.atleast_1d(mu_in)
     E_in_J = 1e6*echarge*E_in_MeV
-    if mu_in == 1 or E_in_MeV == 0:
-        return 0
     k = 1./(4*np.pi*epsilon0)
     coul = q1*q2*k
-    s = coul/(E_in_J*(1 - mu_in))
+    s = coul/np.outer(1 - mu_in, E_in_J) # denominator=0 yeilds nan, as wished
     cross_sec = 0.25* s**2 * 10**31 # 10**31: m**2 -> mbarn
-    return cross_sec
+    return np.squeeze(cross_sec)
 
 
 def tabulated_sigma_diff(E_in_MeV, mu_in, reac):
@@ -74,7 +67,7 @@ def legendre_sigma_diff(E_in_MeV, mu_in, reac):
     cs_leg = np.zeros((len(mu_in), n_leg))
     for jleg in range(n_leg):
         cs_leg[:, jleg] = eval_legendre(jleg, mu_in)
-    cs_sum = np.sum(cs_leg*data_E, axis=1)
+    cs_sum = np.tensordot(cs_leg, data_E, axes=([1, 1]))
 
     leg_tot = legendre_sigma_tot(E_in_MeV, reac)
 
@@ -106,10 +99,11 @@ def legendre_sigma_tot(E_in_MeV, reac, Emin_MeV=5.e-4):
     leg_out[ind_bosch1] = num_a[  ind_bosch1]/(den1_a[  ind_bosch1]*den2[ind_bosch1])
     leg_out[ind_bosch2] = num_ahi[ind_bosch2]/(den1_ahi[ind_bosch2]*den2[ind_bosch2])
     
-    return leg_out
+    return np.squeeze(leg_out)
 
 
 if __name__ == '__main__':
+
 
     import matplotlib.pylab as plt
 
@@ -142,21 +136,16 @@ if __name__ == '__main__':
     coul_diff = coulomb_sigma_diff(E, mu, 2, 2)
     print('%12.4e millibarn' %coul_diff)
 
-    E = 0.85
-    
+    E = 0.3
+
     theta = np.linspace(0, np.pi, 61)
     mu_grid = np.cos(theta)
-    dd_theta = []
-    dt_theta = []
+    Egrid = [E, 2*E]
+    dd_theta = sigma_diff(Egrid, mu_grid, 'dd')
+    dt_theta = sigma_diff(Egrid, mu_grid, 'dt')
     unsort = np.argsort(np.argsort(mu_grid))
-    d3he_theta = sigma_diff([E, 2*E], mu_grid, reac='d3he')
-    coul_alpha = []
-#    coul_alpha = coulomb_sigma_diff(E, mu_grid, 2, 2)
-
-    for mu in mu_grid:
-        dd_theta.append(sigma_diff(E, mu, reac='dd'))
-        dt_theta.append(sigma_diff(E, mu, reac='dt'))
-        coul_alpha.append(sigma_diff(E, mu, 2, 2))
+    d3he_theta = sigma_diff(Egrid, mu_grid, reac='d3he')
+    coul_alpha = sigma_diff(Egrid, mu_grid, 'coul', 2, 2)
 
 # Plots
 
@@ -185,10 +174,11 @@ if __name__ == '__main__':
 
     plt.subplot(1, 4, 4)
     plt.title('D3He')
-    plt.plot(np.degrees(theta), d3he_theta[0, unsort])
-    plt.plot(np.degrees(theta), d3he_theta[1, unsort])
+    plt.plot(np.degrees(theta), d3he_theta[0, unsort], label='%5.2f MeV' %E)
+    plt.plot(np.degrees(theta), d3he_theta[1, unsort], label='%5.2f MeV' %(2*E))
     plt.xlim([0, 180])
     plt.xlabel('Angle [deg]')
     plt.ylabel(r'$\frac{d\sigma}{d\Omega}$ [mbarn]')
+    plt.legend()
 
     plt.show()

@@ -112,9 +112,9 @@ def mono_iso(E1, E2, versor_out, reac, n_sample=1e5):
     logger.info('Convolving distributions')
     Earr, Ekin, cos_the = convolve_dists(v1, v2, versor_out, reac)
     logger.info('Getting cross-sections')
-    sigma_diff = cs.sigma_diff(Ekin, cos_the, reac)
+    weight = cs.sigma_diff(Ekin, cos_the, reac)
 
-    return Earr, sigma_diff
+    return Earr, weight
 
 
 if __name__ == '__main__':
@@ -122,19 +122,19 @@ if __name__ == '__main__':
     import matplotlib.pylab as plt
 
     dens = 4.e19
-    Earr, sigma = mono_iso(0.01, 0.01, [0, 0, 1], 'dt', n_sample=2000)
+    Earr, weight = mono_iso(.0101, .01, [0, 0, 1], 'dd', n_sample=2000)
 
     logger.info('Creating spectrum histogram')
     n_Ebins = 40
-    nx = len(Earr)
-    Ecount, Eedges = np.histogram(Earr, bins=n_Ebins, weights=sigma, density=False)
+
+    Ecount, Eedges = np.histogram(Earr, bins=n_Ebins, weights=weight, density=False)
     Egrid = 0.5*(Eedges[1:] + Eedges[:-1])
 
-    Espec = dens*dens*1e-31*Ecount/float(nx) # 1e-31 because of mbarn-> m**2
+    Espec = dens*dens*1e-31*Ecount/np.sum(weight) # 1e-31 because of mbarn-> m**2
     neut_tot = np.sum(Espec)*(Eedges[-1] - Eedges[0])
     logger.info('Tot neut.: %12.4e 1/(m**3 s)', neut_tot)
     fig = plt.figure('Spectrum', (13, 8))
-    plt.semilogy(Egrid, Espec)
+#    plt.semilogy(Egrid, Espec)
 
-#    plt.plot(Egrid, Espec)
+    plt.plot(Egrid, Espec)
     plt.show()
