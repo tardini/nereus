@@ -140,8 +140,10 @@ class REKIN(QMainWindow):
 
 # User options
 
-        self.setup_init = xml.xml2dict('%s/xml/default.xml' %rekin_dir)
+        self.setup_init = xml.xml2dict('%s/xml/default.xml' %rekin_dir)['main']
         self.gui = {}
+        for node in self.setup_init.keys():
+            self.gui[node] = {}
         user = os.getenv('USER')
 
 #------------
@@ -149,32 +151,32 @@ class REKIN(QMainWindow):
 #------------
 
         cb = ['ddn3he', 'ddpt', 'dt', 'd3he']
-        self.new_tab(reac_layout, checkbuts=cb)
+        self.new_tab(reac_layout, 'reac', checkbuts=cb)
 
 #---------------
 # Cross-sections
 #---------------
 
-        entries = ['E_cs', 'reac_Z1', 'reac_Z2']
+        entries = ['E', 'Z1', 'Z2']
         cb = ['log_scale']
-        combos = {'reac_cs': reaction.keys()}
-        self.new_tab(cross_layout, entries=entries, checkbuts=cb, combos=combos)
+        combos = {'reac': reaction.keys()}
+        self.new_tab(cross_layout, 'cross', entries=entries, checkbuts=cb, combos=combos)
 
 #-----------
 # Kinematics
 #-----------
 
         entries = ['v1x', 'v1y', 'v1z', 'v2x', 'v2y', 'v2z', 'losx', 'losy', 'losz']
-        combos = {'reac_kine': reaction.keys()}
-        self.new_tab(kin_layout, entries=entries, combos=combos, lbl_wid=40, ent_wid=80)
+        combos = {'reac': reaction.keys()}
+        self.new_tab(kin_layout, 'kinematics', entries=entries, combos=combos, lbl_wid=40, ent_wid=80)
 
 #--------
 # Spectra
 #--------
 
-        entries = ['dens', 'E1_spc', 'E2_spc', 'losx_spc', 'losy_spc', 'losz_spc', 'n_sample']
-        combos = {'reac_spc': reaction.keys()}
-        self.new_tab(spec_layout, entries=entries, combos=combos)
+        entries = ['dens', 'E1', 'E2', 'losx', 'losy', 'losz', 'n_sample']
+        combos = {'reac': reaction.keys()}
+        self.new_tab(spec_layout, 'spectrum', entries=entries, combos=combos)
 
 #-----------
 # GUI layout
@@ -193,59 +195,57 @@ class REKIN(QMainWindow):
         h = tkhyper.HyperlinkMessageBox("Help", mytext, "500x60")
 
 
-    def new_tab(self, layout, entries=[], checkbuts=[], combos={}, lbl_wid=140, ent_wid=180):
+    def new_tab(self, layout, node, entries=[], checkbuts=[], combos={}, lbl_wid=140, ent_wid=180):
 # Checkbutton
 
         jrow = 0
+
         for key in checkbuts:
             if key in reaction.keys():
                 lbl = reaction[key].label
             else:
                 lbl = key
-            self.gui[key] = QCheckBox(lbl)
-            layout.addWidget(self.gui[key], jrow, 0, 1, 2)
-            if self.setup_init[key].lower().strip() == 'true':
-                self.gui[key].setChecked(True)
+            self.gui[node][key] = QCheckBox(lbl)
+            layout.addWidget(self.gui[node][key], jrow, 0, 1, 2)
+            if self.setup_init[node][key].lower().strip() == 'true':
+                self.gui[node][key].setChecked(True)
             jrow += 1
 
         for key in entries:
-            val = self.setup_init[key]
+            val = self.setup_init[node][key]
             if key in reaction.keys():
                 lbl = reaction[key].label
             else:
                 lbl = key
             qlbl = QLabel(lbl)
             qlbl.setFixedWidth(lbl_wid)
-            self.gui[key] = QLineEdit(val)
-            self.gui[key].setFixedWidth(ent_wid)
+            self.gui[node][key] = QLineEdit(val)
+            self.gui[node][key].setFixedWidth(ent_wid)
             layout.addWidget(qlbl         , jrow, 0)
-            layout.addWidget(self.gui[key], jrow, 1)
+            layout.addWidget(self.gui[node][key], jrow, 1)
             jrow += 1
 
         for key, combs in combos.items():
-            self.gui[key] = QComboBox()
+            self.gui[node][key] = QComboBox()
             for comb in combs:
-                self.gui[key].addItem(comb.strip())
-            index = self.gui[key].findText(self.setup_init[key].strip())
-            self.gui[key].setCurrentIndex(index)
-            layout.addWidget(self.gui[key], jrow, 0, 1, 2)
+                self.gui[node][key].addItem(comb.strip())
+            index = self.gui[node][key].findText(self.setup_init[node][key].strip())
+            self.gui[node][key].setCurrentIndex(index)
+            layout.addWidget(self.gui[node][key], jrow, 0, 1, 2)
             jrow += 1
 
         layout.setRowStretch(layout.rowCount(), 1)
         layout.setColumnStretch(layout.columnCount(), 1)
 
 
-    def get_gui(self):
+    def get_gui(self, node):
 
         rekin_dic = {}
-        for key, val in self.gui.items():
+        for key, val in self.gui[node].items():
             if isinstance(val, QLineEdit):
                 rekin_dic[key] = val.text()
             elif isinstance(val, QCheckBox):
                 rekin_dic[key] = val.isChecked()
-            elif isinstance(val, QButtonGroup): # for radiobuttons
-                bid = val.checkedId()
-                rekin_dic[key] = self.rblists[key][bid]
             elif isinstance(val, QComboBox):
                 rekin_dic[key] = val.itemText(val.currentIndex())
 
@@ -254,29 +254,30 @@ class REKIN(QMainWindow):
 
     def set_gui(self, xml_d):
 
-        for key, val in xml_d.items():
-            val = val.strip()
-            val_low = val.lower()
-            widget = self.gui[key]
-            if isinstance(widget, QCheckBox):
-                if val_low == 'false':
-                    widget.setChecked(False)
-                elif val_low == 'true':
-                    widget.setChecked(True)
-            elif isinstance(widget, QButtonGroup):
-                for but in widget.buttons():
-                    if but.text().lower() == val_low:
-                        but.setChecked(True)
-            elif isinstance(widget, QLineEdit):
-                if val_low == '':
-                    widget.setText(' ')
-                else:
-                    widget.setText(val)
-            elif isinstance(widget, QComboBox):
-                for index in range(widget.count()):
-                    if widget.itemText(index).strip() == val.strip():
-                        widget.setCurrentIndex(index)
-                        break
+        for node, val1 in xml_d.items():
+            for key, val in val1.items():
+                val = val.strip()
+                val_low = val.lower()
+                widget = self.gui[node][key]
+                if isinstance(widget, QCheckBox):
+                    if val_low == 'false':
+                        widget.setChecked(False)
+                    elif val_low == 'true':
+                        widget.setChecked(True)
+                elif isinstance(widget, QButtonGroup):
+                    for but in widget.buttons():
+                        if but.text().lower() == val_low:
+                            but.setChecked(True)
+                elif isinstance(widget, QLineEdit):
+                    if val_low == '':
+                        widget.setText(' ')
+                    else:
+                        widget.setText(val)
+                elif isinstance(widget, QComboBox):
+                    for index in range(widget.count()):
+                        if widget.itemText(index).strip() == val.strip():
+                            widget.setCurrentIndex(index)
+                            break
 
 
     def load_xml(self):
@@ -288,24 +289,26 @@ class REKIN(QMainWindow):
         else:
             fxml = str(ftmp)
         setup_d = xml.xml2dict(fxml)
-        self.set_gui(setup_d)
+        self.set_gui(setup_d['main'])
 
 
     def save_xml(self):
 
-        rekin_dic = self.get_gui()
+        out_dic = {'main': {}}
+        for node in self.gui.keys():
+            out_dic['main'][node] = self.get_gui(node)
         ftmp = QFileDialog.getSaveFileName(self, 'Save file', \
             '%s/xml' %rekin_dir, "xml files (*.xml)")
         if qt5:
             fxml = ftmp[0]
         else:
             fxml = str(ftmp)
-        xml.dict2xml(rekin_dic, fxml)
+        xml.dict2xml(out_dic, fxml)
 
 
     def reactivity(self):
 
-        rekin_dic = self.get_gui()
+        rekin_dic = self.get_gui('reac')
 
         Ti_keV = np.linspace(1., 60., 60)
         
@@ -325,14 +328,14 @@ class REKIN(QMainWindow):
 
     def cross_section(self):
 
-        rekin_dic = self.get_gui()
+        rekin_dic = self.get_gui('cross')
 
-        Egrid = np.array([float(x) for x in eval(rekin_dic['E_cs'])], dtype=np.float32)
+        Egrid = np.array([float(x) for x in eval(rekin_dic['E'])], dtype=np.float32)
         logger.info('Cross-section')
 
         theta = np.linspace(0, np.pi, 61)
         mu_grid = np.cos(theta)
-        reac_lbl = rekin_dic['reac_cs'].lower().strip()
+        reac_lbl = rekin_dic['reac'].lower().strip()
         sigma = cs.sigma_diff(Egrid, mu_grid, reac_lbl, 2, 2)
 
         self.wid = plot_rekin.plotWindow()
@@ -343,10 +346,10 @@ class REKIN(QMainWindow):
 
     def scatt_kine(self):
 
-        rekin_dic = self.get_gui()
+        rekin_dic = self.get_gui('kinematics')
 
         logger.info('Scattering kinematics')
-        reac_lbl = rekin_dic['reac_kine'].lower().strip()
+        reac_lbl = rekin_dic['reac'].lower().strip()
         v1 = [float(rekin_dic['v1x']), float(rekin_dic['v1y']), float(rekin_dic['v1z'])]
         v2 = [float(rekin_dic['v2x']), float(rekin_dic['v2y']), float(rekin_dic['v2z'])]
         versor_out = [float(rekin_dic['losx']), float(rekin_dic['losy']), float(rekin_dic['losz'])]
@@ -360,17 +363,17 @@ class REKIN(QMainWindow):
 
     def spectra(self):
 
-        rekin_dic = self.get_gui()
+        rekin_dic = self.get_gui('spectrum')
 
         logger.info('Spectra')
         dens = float(rekin_dic['dens'])
-        reac_lbl = rekin_dic['reac_spc'].lower().strip()
+        reac_lbl = rekin_dic['reac'].lower().strip()
         n_sample = int(rekin_dic['n_sample'])
-        E1 = float(rekin_dic['E1_spc'])
-        E2 = float(rekin_dic['E2_spc'])
-        losx = float(rekin_dic['losx_spc'])
-        losy = float(rekin_dic['losy_spc'])
-        losz = float(rekin_dic['losz_spc'])
+        E1 = float(rekin_dic['E1'])
+        E2 = float(rekin_dic['E2'])
+        losx = float(rekin_dic['losx'])
+        losy = float(rekin_dic['losy'])
+        losz = float(rekin_dic['losz'])
         Earr, weight = spc.mono_iso(E1, E2, [losx, losy, losz], reac_lbl, n_sample=n_sample)
         Egrid, Espec = spc.calc_spectrum(dens, Earr, weight)
 
