@@ -1,8 +1,9 @@
 import sys, logging
 import numpy as np
-import constants as con
-import calc_cross_section as cs
 import numba as nb
+import calc_cross_section as cs
+from reactions import reaction
+
 
 fmt = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s: %(message)s', '%H:%M:%S')
 hnd = logging.StreamHandler()
@@ -146,48 +147,48 @@ class calc_reac:
 
         versor_out = np.array(versor_out, dtype=np.float32)
         self.versor_out = versor_out/np.linalg.norm(versor_out)
-        self.v1 = np.array(v1)
-        self.v2 = np.array(v2)
-        self.m_in1   = con.m[reac].in1
-        self.m_in2   = con.m[reac].in2
-        self.m_prod1 = con.m[reac].prod1
-        self.m_prod2 = con.m[reac].prod2
-        self.reac = reac
+        self.in1   = reaction[reac].in1
+        self.in2   = reaction[reac].in2
+        self.prod1 = reaction[reac].prod1
+        self.prod2 = reaction[reac].prod2
+        self.reac  = reaction[reac].label
 
-        self.qmom_in1 = mv2qmom(self.m_in1, self.v1)
-        self.qmom_in2 = mv2qmom(self.m_in2, self.v2)
-        self.vcm = (self.m_in1*self.v1 + self.m_in2*self.v2)/(self.m_in1 + self.m_in2)
-        self.Ekin = 0.5*self.m_in1*np.sum((self.v1 - self.vcm)**2) + \
-                    0.5*self.m_in2*np.sum((self.v2 - self.vcm)**2)
-        qmom_tot = self.qmom_in1 + self.qmom_in2
+        self.in1.v = np.array(v1)
+        self.in2.v = np.array(v2)
+        self.in1.qmom = mv2qmom(self.in1.m, self.in1.v)
+        self.in2.qmom = mv2qmom(self.in2.m, self.in2.v)
+        self.vcm = (self.in1.m*self.in1.v + self.in2.m*self.in2.v)/(self.in1.m + self.in2.m)
+        self.Ekin = 0.5*self.in1.m*np.sum((self.in1.v - self.vcm)**2) + \
+                    0.5*self.in2.m*np.sum((self.in2.v - self.vcm)**2)
+        qmom_tot = self.in1.qmom + self.in2.qmom
         E_tot = qmom_tot[0]
         p_tot = qmom_tot[1:]
-        A = 0.5*(E_tot**2 - np.sum(p_tot**2) + self.m_prod1**2 - self.m_prod2**2)/E_tot
+        A = 0.5*(E_tot**2 - np.sum(p_tot**2) + self.prod1.m**2 - self.prod2.m**2)/E_tot
         B = np.dot(p_tot, self.versor_out)/E_tot   # Well < 1
 
-        Eprod1 = E_prod1(self.m_prod1, A, B)
-        self.qmom_prod1a = np.zeros(4)
-        self.qmom_prod1a[0] = Eprod1[0]
-        self.qmom_prod1a[1: ] = E_m2pmod(Eprod1[0], self.m_prod1)*self.versor_out
-        self.qmom_prod2a = qmom_tot - self.qmom_prod1a
-        self.Ekin_prod1a = self.qmom_prod1a[0] - self.m_prod1
-        self.Ekin_prod2a = self.qmom_prod2a[0] - self.m_prod2
-        self.v_out1a = self.qmom_prod1a[1: ]/self.qmom_prod1a[0]
-        self.v_out2a = self.qmom_prod2a[1: ]/self.qmom_prod2a[0]
-        self.cos_theta_a = cos_the(self.v1 - self.vcm, self.v_out1a - self.vcm)
+        Eprod1 = E_prod1(self.prod1.m, A, B)
+        self.prod1.qmom_a = np.zeros(4)
+        self.prod1.qmom_a[0] = Eprod1[0]
+        self.prod1.qmom_a[1: ] = E_m2pmod(Eprod1[0], self.prod1.m)*self.versor_out
+        self.prod2.qmom_a = qmom_tot - self.prod1.qmom_a
+        self.prod1.Ekin_a = self.prod1.qmom_a[0] - self.prod1.m
+        self.prod2.Ekin_a = self.prod2.qmom_a[0] - self.prod2.m
+        self.prod1.v_a = self.prod1.qmom_a[1: ]/self.prod1.qmom_a[0]
+        self.prod2.v_a = self.prod2.qmom_a[1: ]/self.prod2.qmom_a[0]
+        self.cos_theta_a = cos_the(self.in1.v - self.vcm, self.prod1.v_a - self.vcm)
 # Ekin, cos_theta are relevant for the differential cross-sections
-        self.sigma_diff_a = cs.sigma_diff(self.Ekin, self.cos_theta_a)
+        self.sigma_diff_a = cs.sigma_diff(self.Ekin, self.cos_theta_a, reac)
         if len(Eprod1) == 2:
-            self.qmom_prod1b = np.zeros(4)
-            self.qmom_prod1b[0] = Eprod1[1]
-            self.qmom_prod1b[1: ] = E_m2pmod(Eprod1[1], self.m_prod1)*self.versor_out
-            self.qmom_prod2b = qmom_tot - self.qmom_prod1b
-            self.Ekin_prod1b = self.qmom_prod1b[0] - self.m_prod1
-            self.Ekin_prod2b = self.qmom_prod2b[0] - self.m_prod2
-            self.v_out1b = self.qmom_prod1b[1: ]/self.qmom_prod1b[0]
-            self.v_out2b = self.qmom_prod2b[1: ]/self.qmom_prod2b[0]
-            self.cos_theta_b = cos_the(self.v1 - self.vcm, self.v_out1b - self.vcm)
-            self.sigma_diff_b = cs.sigma_diff(self.Ekin, self.cos_theta_b)
+            self.prod1.qmom_b = np.zeros(4)
+            self.prod1.qmom_b[0] = Eprod1[1]
+            self.prod1.qmom_b[1: ] = E_m2pmod(Eprod1[1], self.prod1.m)*self.versor_out
+            self.prod2.qmom_b = qmom_tot - self.prod1.qmom_b
+            self.Ekin_prod1b = self.prod1.qmom_b[0] - self.prod1.m
+            self.Ekin_prod2b = self.prod2.qmom_b[0] - self.prod2.m
+            self.prod1.v_b = self.prod1.qmom_b[1: ]/self.prod1.qmom_b[0]
+            self.prod2.v_b = self.prod2.qmom_b[1: ]/self.prod2.qmom_b[0]
+            self.cos_theta_b = cos_the(self.in1.v - self.vcm, self.prod1.v_b - self.vcm)
+            self.sigma_diff_b = cs.sigma_diff(self.Ekin, self.cos_theta_b, reac)
  
 
 class out_versor_scan:
@@ -202,27 +203,27 @@ class out_versor_scan:
         elif sample_flag == 2:
             self.x, self.y, self.z = uniform_sample_versor2(n_sample=n_sample)
 
-        self.m_in1   = con.m[reac].in1
-        self.m_in2   = con.m[reac].in2
-        self.m_prod1 = con.m[reac].prod1
-        self.m_prod2 = con.m[reac].prod2
+        self.in1   = reaction[reac].in1
+        self.in2   = reaction[reac].in2
+        self.prod1 = reaction[reac].prod1
+        self.prod2 = reaction[reac].prod2
         self.reac = reac
 
         nx = len(self.x)
         print(nx)
         logger.info('Compute Eneut')
-        self.qmom_tot = mv2qmom(self.m_in1, v1) + mv2qmom(self.m_in2, v2)
+        self.qmom_tot = mv2qmom(self.in1.m, v1) + mv2qmom(self.in2.m, v2)
         E_tot = self.qmom_tot[0]
         p_tot = self.qmom_tot[1:]
-        A = 0.5*(E_tot**2 - np.sum(p_tot**2) + self.m_prod1**2 - self.m_prod2**2)/E_tot
+        A = 0.5*(E_tot**2 - np.sum(p_tot**2) + self.prod1.m**2 - self.prod2.m**2)/E_tot
         B = (p_tot[0]*self.x + p_tot[1]*self.y + p_tot[2]*self.z)/E_tot # array(n_sample)
         self.E_forw = []
         self.E_back = []
         for jv in range(nx):
-            Eprod1 = E_prod1(self.m_prod1, A, B[jv])
+            Eprod1 = E_prod1(self.prod1.m, A, B[jv])
             if len(Eprod1) == 2: # different alpha recoil; not same probability
-                self.E_forw.append(Eprod1[0] - self.m_prod1)
-                self.E_back.append(Eprod1[1] - self.m_prod1)
+                self.E_forw.append(Eprod1[0] - self.prod1.m)
+                self.E_back.append(Eprod1[1] - self.prod1.m)
             elif(len(Eprod1) == 1):
                 print(Eprod1)
 
@@ -245,11 +246,6 @@ if __name__ == '__main__':
     count2b, Eedges = np.histogram(scan2.E_back, bins=n_Ebins)
     count2f, Eedges = np.histogram(scan2.E_forw, bins=n_Ebins)
     Egrid = 0.5*(Eedges[1:] + Eedges[:-1])
-
-    versor_out = [1, 1, 0]
-    kin = calc_reac(v1, v2, versor_out, 'dt')
-    print('Cross section', kin.sigma_diff_a)
-    print('Cross section root2', kin.sigma_diff_b)
 
 #------
 # Plots
@@ -277,22 +273,5 @@ if __name__ == '__main__':
 #    fig3 = plt.figure('Uniform sampling sph', (13, 10))
 #    ax3 = fig3.add_subplot(projection='3d')
 #    ax3.scatter(scan3.x[::step], scan3.y[::step], scan3.z[::step], marker='o')
-    fig_sol = plt.figure('Solutions', (13, 10))
-    ax_sol = fig_sol.add_subplot(projection='3d')
-    print(kin.qmom_in1[1:])
-    print(kin.qmom_in2[1:])
-    print(kin.qmom_prod1a[1:])
-    print(kin.qmom_prod2a[1:])
-    print(kin.qmom_prod1b[1:])
-    print(kin.qmom_prod2b[1:])
-    plt.plot([0, kin.qmom_in1[1]], [0, kin.qmom_in1[2]], [0, kin.qmom_in1[3]], 'k-')
-    plt.plot([0, kin.qmom_in2[1]], [0, kin.qmom_in2[2]], [0, kin.qmom_in2[3]], 'k--')
-    if hasattr(kin, 'qmom_prod1b'):
-        plt.plot([0, kin.qmom_prod1b[1]], [0, kin.qmom_prod1b[2]], [0, kin.qmom_prod1b[3]], 'b-')
-        plt.plot([0, kin.qmom_prod2b[1]], [0, kin.qmom_prod2b[2]], [0, kin.qmom_prod2b[3]], 'b--')
-    plt.plot([0, kin.qmom_prod1a[1]], [0, kin.qmom_prod1a[2]], [0, kin.qmom_prod1a[3]], 'r-')
-    plt.plot([0, kin.qmom_prod2a[1]], [0, kin.qmom_prod2a[2]], [0, kin.qmom_prod2a[3]], 'r--')
-    plt.xlim([-200, 200])
-    plt.ylim([-200, 200])
 
     plt.show()

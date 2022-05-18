@@ -22,6 +22,10 @@ import dixm
 from reactivities import *
 import constants as con
 import calc_cross_section as cs
+import calc_kinematics as ck
+import calc_spectrum as spc
+import plot_rekin
+from reactions import reaction
 
 
 xml = dixm.DIX()
@@ -50,7 +54,7 @@ class REKIN(QMainWindow):
         yhead = 44
         yline = 30
         ybar  = 48
-        ywin  = xwin + yhead + ybar
+        ywin  = 15*yline + yhead + ybar
 
         qhead  = QWidget(self)
         qbar   = QWidget(self)
@@ -153,8 +157,24 @@ class REKIN(QMainWindow):
 
         entries = ['E_cs', 'reac_Z1', 'reac_Z2']
         cb = ['log_scale']
-        combos = {'reac_cs': con.reac_lbls}
+        combos = {'reac_cs': reaction.keys()}
         self.new_tab(cross_layout, entries=entries, checkbuts=cb, combos=combos)
+
+#-----------
+# Kinematics
+#-----------
+
+        entries = ['v1x', 'v1y', 'v1z', 'v2x', 'v2y', 'v2z', 'losx', 'losy', 'losz']
+        combos = {'reac_kine': reaction.keys()}
+        self.new_tab(kin_layout, entries=entries, combos=combos, lbl_wid=40, ent_wid=80)
+
+#--------
+# Spectra
+#--------
+
+        entries = ['dens', 'E1_spc', 'E2_spc', 'losx_spc', 'losy_spc', 'losz_spc', 'n_sample']
+        combos = {'reac_spc': reaction.keys()}
+        self.new_tab(spec_layout, entries=entries, combos=combos)
 
 #-----------
 # GUI layout
@@ -173,13 +193,13 @@ class REKIN(QMainWindow):
         h = tkhyper.HyperlinkMessageBox("Help", mytext, "500x60")
 
 
-    def new_tab(self, layout, entries=[], checkbuts=[], combos={}):
+    def new_tab(self, layout, entries=[], checkbuts=[], combos={}, lbl_wid=140, ent_wid=180):
 # Checkbutton
 
         jrow = 0
         for key in checkbuts:
-            if key in con.reac_lbls.keys():
-                lbl = con.reac_lbls[key]
+            if key in reaction.keys():
+                lbl = reaction[key].label
             else:
                 lbl = key
             self.gui[key] = QCheckBox(lbl)
@@ -190,21 +210,21 @@ class REKIN(QMainWindow):
 
         for key in entries:
             val = self.setup_init[key]
-            if key in con.reac_lbls.keys():
-                lbl = con.reac_lbls[key]
+            if key in reaction.keys():
+                lbl = reaction[key].label
             else:
                 lbl = key
             qlbl = QLabel(lbl)
-            qlbl.setFixedWidth(200)
+            qlbl.setFixedWidth(lbl_wid)
             self.gui[key] = QLineEdit(val)
-            self.gui[key].setFixedWidth(180)
+            self.gui[key].setFixedWidth(ent_wid)
             layout.addWidget(qlbl         , jrow, 0)
             layout.addWidget(self.gui[key], jrow, 1)
             jrow += 1
 
-        for key, combo_d in combos.items():
+        for key, combs in combos.items():
             self.gui[key] = QComboBox()
-            for comb in combo_d.keys():
+            for comb in combs:
                 self.gui[key].addItem(comb.strip())
             index = self.gui[key].findText(self.setup_init[key].strip())
             self.gui[key].setCurrentIndex(index)
@@ -291,53 +311,73 @@ class REKIN(QMainWindow):
         
         logger.info('Reactivities')
 
-        plt.figure('Reac', (10,8))
-        for key, coeff in coeff_reac.items():
-            if rekin_dic[key]:
-                reac = react(Ti_keV, m1_c2=con.m[key].in1, m2_c2=con.m[key].in2, coeff=coeff)
-                plt.semilogy(Ti_keV, reac, label=con.reac_lbls[key])
-        plt.xlim([0, 60])
-        plt.xlabel(r'T$_i$ [keV]')
-        plt.ylabel(r'Reactivity [cm$^3$/s]')
-        plt.grid()
-        plt.legend(loc=2)
-        plt.show()
-        
+        reac_d = {}
+
+        for key, reac in reaction.items():
+            if hasattr(reac, 'coeff_reac') and rekin_dic[key]:
+                reac_d[reac.label] = react(Ti_keV, key)
+
+        self.wid = plot_rekin.plotWindow()
+        fig_reac =  plot_rekin.fig_reactivity(reac_d, Ti_keV)       
+        self.wid.addPlot('Reactivities', fig_reac)
+        self.wid.show()
+
 
     def cross_section(self):
 
         rekin_dic = self.get_gui()
 
         Egrid = np.array([float(x) for x in eval(rekin_dic['E_cs'])], dtype=np.float32)
-        print(rekin_dic['log_scale'])
         logger.info('Cross-section')
+
         theta = np.linspace(0, np.pi, 61)
         mu_grid = np.cos(theta)
+        reac_lbl = rekin_dic['reac_cs'].lower().strip()
+        sigma = cs.sigma_diff(Egrid, mu_grid, reac_lbl, 2, 2)
 
-        plt.figure('Cross-sections', (10, 8))
-
-        key = rekin_dic['reac_cs'].lower().strip()
-        reac = cs.sigma_diff(Egrid, mu_grid, key, 2, 2)
-        plt.title(con.reac_lbls[key])
-        if rekin_dic['log_scale']:
-            plt.semilogy(np.degrees(theta), reac)
-        else:
-            plt.plot(np.degrees(theta), reac)
-        plt.xlim([0, 180])
-        plt.xlabel('Angle [deg]')
-        plt.ylabel(r'$\frac{d\sigma}{d\Omega}$ [mbarn]')
-
-        plt.show()
+        self.wid = plot_rekin.plotWindow()
+        fig_cross = plot_rekin.fig_cross(sigma, theta, log_scale=rekin_dic['log_scale'])
+        self.wid.addPlot('Cross-sections', fig_cross)
+        self.wid.show()
 
 
     def scatt_kine(self):
 
+        rekin_dic = self.get_gui()
+
         logger.info('Scattering kinematics')
+        reac_lbl = rekin_dic['reac_kine'].lower().strip()
+        v1 = [float(rekin_dic['v1x']), float(rekin_dic['v1y']), float(rekin_dic['v1z'])]
+        v2 = [float(rekin_dic['v2x']), float(rekin_dic['v2y']), float(rekin_dic['v2z'])]
+        versor_out = [float(rekin_dic['losx']), float(rekin_dic['losy']), float(rekin_dic['losz'])]
+        kin = ck.calc_reac(v1, v2, versor_out, 'dt')
+
+        self.wid = plot_rekin.plotWindow()
+        fig_kine = plot_rekin.fig_scatt(kin)
+        self.wid.addPlot('Scattering kinematics', fig_kine)
+        self.wid.show()
 
 
     def spectra(self):
 
+        rekin_dic = self.get_gui()
+
         logger.info('Spectra')
+        dens = float(rekin_dic['dens'])
+        reac_lbl = rekin_dic['reac_spc'].lower().strip()
+        n_sample = int(rekin_dic['n_sample'])
+        E1 = float(rekin_dic['E1_spc'])
+        E2 = float(rekin_dic['E2_spc'])
+        losx = float(rekin_dic['losx_spc'])
+        losy = float(rekin_dic['losy_spc'])
+        losz = float(rekin_dic['losz_spc'])
+        Earr, weight = spc.mono_iso(E1, E2, [losx, losy, losz], reac_lbl, n_sample=n_sample)
+        Egrid, Espec = spc.calc_spectrum(dens, Earr, weight)
+
+        self.wid = plot_rekin.plotWindow()
+        fig_spec = plot_rekin.fig_spec(Egrid, Espec)
+        self.wid.addPlot('Neutron Spectrum', fig_spec)
+        self.wid.show()
 
 
 if __name__ == '__main__':

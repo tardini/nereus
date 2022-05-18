@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.interpolate import interp1d
-from constants import epsilon0, echarge, reac_lbls
+from constants import epsilon0, echarge
 import cross_section_tables as cs_tab
 
 

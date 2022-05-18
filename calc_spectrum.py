@@ -1,9 +1,10 @@
 import logging
 import numpy as np
+import numba as nb
 import constants as con
+from reactions import reaction
 import calc_kinematics as ck
 import calc_cross_section as cs
-import numba as nb
 
 fmt = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s: %(message)s', '%H:%M:%S')
 hnd = logging.StreamHandler()
@@ -19,7 +20,7 @@ def convolve_dists(v1_all, v2_all, versor_out, reac):
         m_in1   = con.mDc2
         m_in2   = con.mTc2
         m_prod1 = con.mnc2
-        m_prod2 = con.mac2
+        m_prod2 = con.mHe4c2
     elif reac == 'ddn3he':
         m_in1   = con.mDc2
         m_in2   = con.mDc2
@@ -94,8 +95,9 @@ def convolve_dists(v1_all, v2_all, versor_out, reac):
 
 def mono_iso(E1, E2, versor_out, reac, n_sample=1e5):
 
-    m_in1 = con.m[reac].in1
-    m_in2 = con.m[reac].in2
+    print(E1, E2, versor_out, reac, n_sample)
+    m_in1 = reaction[reac].in1.m
+    m_in2 = reaction[reac].in2.m
 
     versor_out = np.array(versor_out, dtype=np.float32)
     versor_out /= np.linalg.norm(versor_out)
@@ -113,15 +115,7 @@ def mono_iso(E1, E2, versor_out, reac, n_sample=1e5):
     return Earr, weight
 
 
-if __name__ == '__main__':
-
-    import matplotlib.pylab as plt
-
-    dens = 4.e19
-    Earr, weight = mono_iso(.0101, .01, [0, 0, 1], 'ddn3he', n_sample=2000)
-
-    logger.info('Creating spectrum histogram')
-    n_Ebins = 40
+def calc_spectrum(dens, Earr, weight, n_Ebins=40):
 
     Ecount, Eedges = np.histogram(Earr, bins=n_Ebins, weights=weight, density=False)
     Egrid = 0.5*(Eedges[1:] + Eedges[:-1])
@@ -129,8 +123,5 @@ if __name__ == '__main__':
     Espec = dens*dens*1e-31*Ecount/np.sum(weight) # 1e-31 because of mbarn-> m**2
     neut_tot = np.sum(Espec)*(Eedges[-1] - Eedges[0])
     logger.info('Tot neut.: %12.4e 1/(m**3 s)', neut_tot)
-    fig = plt.figure('Spectrum', (13, 8))
-#    plt.semilogy(Egrid, Espec)
 
-    plt.plot(Egrid, Espec)
-    plt.show()
+    return Egrid, Espec

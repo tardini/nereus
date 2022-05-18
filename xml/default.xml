@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+
+<main>
+<!-- Reactivities -->
+  <ddn3he>true</ddn3he>
+  <ddpt>true</ddpt>
+  <dt>true</dt>
+  <d3he>true</d3he>
+<!-- Cross-sections -->
+  <E_cs>np.linspace(0.2, 0.6, 5)</E_cs>
+  <reac_cs>dt</reac_cs>
+  <reac_Z1>2</reac_Z1>
+  <reac_Z2>2</reac_Z2>
+  <log_scale>true</log_scale>
+<!-- Kinematics -->
+  <reac_kine>dt</reac_kine>
+<!-- v unit: c -->
+  <v1x>1e-2</v1x> 
+  <v1y>1e-2</v1y>
+  <v1z>1e-2</v1z>
+  <v2x>5e-3</v2x>
+  <v2y>0</v2y>
+  <v2z>0</v2z>
+<!-- LoS normalisatoin happens inside the program -->
+  <losx>1</losx>
+  <losy>0</losy>
+  <losz>0</losz>
+<!-- spectrum -->
+  <reac_spc>ddn3he</reac_spc>
+  <dens>4e19</dens>
+  <n_sample>2000</n_sample>
+  <E1_spc>0.0103</E1_spc>
+  <E2_spc>0.010</E2_spc>
+  <losx_spc>0</losx_spc>
+  <losy_spc>0</losy_spc>
+  <losz_spc>1</losz_spc>
+</main>
