@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.interpolate import interp1d
-from constants import epsilon0, echarge
+from constants import epsilon0, echarge, reac_lbls
 import cross_section_tables as cs_tab
 
 
@@ -9,7 +9,7 @@ def sigma_diff(E_in_MeV, mu_in, reac, Z1=None, Z2=None, paired=False):
 
     if reac in ('dp', 'd3he', 'alphad', 'alphat', 'd3healphap'):
         return tabulated_sigma_diff(E_in_MeV, mu_in, reac, paired=paired)
-    elif reac in ('dt', 'dd'):
+    elif reac in ('dt', 'ddn3he'):
         return legendre_sigma_diff(E_in_MeV, mu_in, reac, paired=paired)
     elif Z1 is not None:
         return coulomb_sigma_diff(E_in_MeV, mu_in, Z1, Z2)
@@ -67,7 +67,7 @@ def legendre_sigma_diff(E_in_MeV, mu_in, reac, paired=False):
 
     if reac == 'dt':
         cs = cs_tab.DT
-    elif reac == 'dd':
+    elif reac == 'ddn3he':
         cs = cs_tab.DDn3He
     n_leg = cs.leg_coeff.shape[1]
     data = interp1d(cs.En, cs.leg_coeff, axis=0)
@@ -90,7 +90,7 @@ def legendre_sigma_tot(E_in_MeV, reac, Emin_MeV=5.e-4):
 
     if reac == 'dt':
         cs = cs_tab.DT
-    elif reac == 'dd':
+    elif reac == 'ddn3he':
         cs = cs_tab.DDn3He
 
     E_in_MeV = np.atleast_1d(E_in_MeV)
@@ -115,9 +115,6 @@ def legendre_sigma_tot(E_in_MeV, reac, Emin_MeV=5.e-4):
 
 
 if __name__ == '__main__':
-
-
-    import matplotlib.pylab as plt
 
 # Cross-sections
 
@@ -147,49 +144,3 @@ if __name__ == '__main__':
     print('Coul cross-section for E=%8.4f MeV, mu=%6.3f:' %(E, mu))
     coul_diff = sigma_diff(E, mu, 'coul', Z1=2, Z2=2)
     print('%12.4e millibarn' %coul_diff)
-
-    E = 0.3
-
-    theta = np.linspace(0, np.pi, 61)
-    mu_grid = np.cos(theta)
-    Egrid = [E, 2*E]
-    dd_theta = sigma_diff(Egrid, mu_grid, 'dd')
-    dt_theta = sigma_diff(Egrid, mu_grid, 'dt')
-    d3he_theta = sigma_diff(Egrid, mu_grid, reac='d3he')
-    coul_alpha = sigma_diff(Egrid, mu_grid, 'coul', 2, 2)
-
-# Plots
-
-    plt.figure('Cross-sections', (19, 6))
-
-    plt.subplot(1, 4, 1)
-    plt.title('DD')
-    plt.plot(np.degrees(theta), dd_theta)
-    plt.xlim([0, 180])
-    plt.xlabel('Angle [deg]')
-    plt.ylabel(r'$\frac{d\sigma}{d\Omega}$ [mbarn]')
-
-    plt.subplot(1, 4, 2)
-    plt.title('DT')
-    plt.plot(np.degrees(theta), dt_theta)
-    plt.xlim([0, 180])
-    plt.xlabel('Angle [deg]')
-    plt.ylabel(r'$\frac{d\sigma}{d\Omega}$ [mbarn]')
-
-    plt.subplot(1, 4, 3)
-    plt.title(r'Coulomb $\alpha-\alpha$')
-    plt.semilogy(np.degrees(theta), coul_alpha)
-    plt.xlim([0, 180])
-    plt.xlabel('Angle [deg]')
-    plt.ylabel(r'$\frac{d\sigma}{d\Omega}$ [mbarn]')
-
-    plt.subplot(1, 4, 4)
-    plt.title('D3He')
-    plt.plot(np.degrees(theta), d3he_theta[0], label='%5.2f MeV' %E)
-    plt.plot(np.degrees(theta), d3he_theta[1], label='%5.2f MeV' %(2*E))
-    plt.xlim([0, 180])
-    plt.xlabel('Angle [deg]')
-    plt.ylabel(r'$\frac{d\sigma}{d\Omega}$ [mbarn]')
-    plt.legend()
-
-    plt.show()

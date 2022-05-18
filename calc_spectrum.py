@@ -20,7 +20,7 @@ def convolve_dists(v1_all, v2_all, versor_out, reac):
         m_in2   = con.mTc2
         m_prod1 = con.mnc2
         m_prod2 = con.mac2
-    elif reac == 'dd':
+    elif reac == 'ddn3he':
         m_in1   = con.mDc2
         m_in2   = con.mDc2
         m_prod1 = con.mnc2
@@ -118,7 +118,7 @@ if __name__ == '__main__':
     import matplotlib.pylab as plt
 
     dens = 4.e19
-    Earr, weight = mono_iso(.0101, .01, [0, 0, 1], 'dd', n_sample=2000)
+    Earr, weight = mono_iso(.0101, .01, [0, 0, 1], 'ddn3he', n_sample=2000)
 
     logger.info('Creating spectrum histogram')
     n_Ebins = 40

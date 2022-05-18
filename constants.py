@@ -18,18 +18,30 @@ class mass:
     pass
 
 m = {}
-for reac in ('dp', 'd3he', 'alphad', 'alphat', 'd3healphap', 'dt', 'dd'):
+for reac in ('dp', 'd3he', 'alphad', 'alphat', 'd3healphap', 'dt', 'ddpt', 'ddn3he'):
     m[reac] = mass()
 
 m['dp'].in1 = mpc2
 m['dp'].in2 = mDc2
 
-m['dd'].in1   = mDc2
-m['dd'].in2   = mDc2
-m['dd'].prod1 = mnc2
-m['dd'].prod2 = mHe3c2
+m['ddn3he'].in1   = mDc2
+m['ddn3he'].in2   = mDc2
+m['ddn3he'].prod1 = mnc2
+m['ddn3he'].prod2 = mHe3c2
+
+m['ddpt'].in1   = mDc2
+m['ddpt'].in2   = mDc2
+m['ddpt'].prod1 = mpc2
+m['ddpt'].prod2 = mTc2
+
+m['d3he'].in1   = mDc2
+m['d3he'].in2   = mHe3c2
+m['d3he'].prod1 = mpc2
+m['d3he'].prod2 = mac2
 
 m['dt'].in1   = mDc2
 m['dt'].in2   = mTc2
 m['dt'].prod1 = mnc2
 m['dt'].prod2 = mac2
+
+reac_lbls = {'ddn3he': 'DD->n3He', 'ddpt': 'DD->pT', 'dt': 'DT->n4He', 'd3he': 'D3He->p4He', 'coul': 'Coulomb'}
