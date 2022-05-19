@@ -4,7 +4,7 @@ __author__  = 'Giovanni Tardini (Tel. 1898)'
 __version__ = '0.0.1'
 __date__    = '29.03.2022'
 
-import os, sys, logging
+import os, sys, logging, webbrowser
 
 try:
     from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QGridLayout, QMenu, QAction, QLabel, QPushButton, QLineEdit, QCheckBox, QFileDialog, QRadioButton, QButtonGroup, QTabWidget, QVBoxLayout, QComboBox
@@ -29,6 +29,8 @@ from reactions import reaction
 
 
 xml = dixm.DIX()
+
+os.environ['BROWSER'] = '/usr/bin/firefox'
 
 fmt = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s: %(message)s', '%H:%M:%S')
 hnd = logging.StreamHandler()
@@ -121,7 +123,7 @@ class REKIN(QMainWindow):
         loadAction.triggered.connect(self.load_xml)
         saveAction.triggered.connect(self.save_xml)
 
-        aboutAction = QAction('&About', helpMenu)
+        aboutAction = QAction('&Web docu', helpMenu)
         aboutAction.triggered.connect(self.about)
         helpMenu.addAction(aboutAction)
 
@@ -191,8 +193,7 @@ class REKIN(QMainWindow):
 
     def about(self):
 
-        mytext = 'Documentation at <a href="http://www.aug.ipp.mpg.de/~git/tot/index.html">TOT/TTH diagnostic homepage</a>'
-        h = tkhyper.HyperlinkMessageBox("Help", mytext, "500x60")
+        webbrowser.open('https://www.aug.ipp.mpg.de/~git/rekin/index.html')
 
 
     def new_tab(self, layout, node, entries=[], checkbuts=[], combos={}, lbl_wid=140, ent_wid=180):
