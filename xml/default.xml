@@ -29,8 +29,8 @@
         <reac>ddn3he</reac>
         <dens>4e19</dens>
         <n_sample>1000</n_sample>
-        <E1>0.0103</E1>
-        <E2>0.010</E2>
+        <E1>0.01</E1>
+        <E2>0.01</E2>
         <losx>0</losx>
         <losy>0</losy>
         <losz>1</losz>
