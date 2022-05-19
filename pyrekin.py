@@ -341,7 +341,7 @@ class REKIN(QMainWindow):
         sigma = cs.sigma_diff(Egrid, mu_grid, reac_lbl, 2, 2)
 
         self.wid = plot_rekin.plotWindow()
-        fig_cross = plot_rekin.fig_cross(sigma, theta, log_scale=rekin_dic['log_scale'])
+        fig_cross = plot_rekin.fig_cross(sigma, theta, Egrid, log_scale=rekin_dic['log_scale'])
         self.wid.addPlot('Cross-sections', fig_cross)
         self.wid.show()
 
