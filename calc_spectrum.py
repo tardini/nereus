@@ -103,9 +103,10 @@ def mono_iso(E1, E2, versor_out, reac, n_sample=1e5):
     versor_out /= np.linalg.norm(versor_out)
     vx1, vy1, vz1 = ck.uniform_sample_versor(n_sample=n_sample)
 
-    ver = np.vstack((vx1, vy1, vz1)).T
-    v1 = ck.E_m2vmod(E1 + m_in1, m_in1) * ver
-    v2 = ck.E_m2vmod(E2 + m_in2, m_in2) * ver # some randomness would be good here
+    ver1 = np.vstack((vx1, vy1, vz1)).T
+    ver2 = np.vstack((vz1, vx1, vy1)).T
+    v1 = ck.E_m2vmod(E1 + m_in1, m_in1) * ver1
+    v2 = ck.E_m2vmod(E2 + m_in2, m_in2) * ver2 # some randomness would be good here
 
     logger.info('Convolving distributions')
     Earr, Ekin, cos_the = convolve_dists(v1, v2, versor_out, reac)

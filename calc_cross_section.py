@@ -76,7 +76,6 @@ def legendre_sigma_diff(E_in_MeV, mu_in, reac, paired=False):
     for jleg in range(n_leg):
         cs_leg[:, jleg] = eval_legendre(jleg, mu_in)
     if paired:
-        print(cs_leg.shape, data_E.shape)
         cs_sum = np.sum(cs_leg*data_E, axis=1)
     else:
         cs_sum = np.tensordot(cs_leg, data_E, axes=([1, 1]))

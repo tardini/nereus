@@ -8,10 +8,10 @@
     </reac>
     <cross>
         <E>np.linspace(0.2, 0.6, 5)</E>
-        <reac>dt</reac>
+        <reac>ddn3he</reac>
         <Z1>2</Z1>
         <Z2>2</Z2>
-        <log_scale>true</log_scale>
+        <log_scale>false</log_scale>
     </cross>
     <kinematics>
         <reac>dt</reac>
@@ -28,7 +28,7 @@
     <spectrum>
         <reac>ddn3he</reac>
         <dens>4e19</dens>
-        <n_sample>2000</n_sample>
+        <n_sample>1000</n_sample>
         <E1>0.0103</E1>
         <E2>0.010</E2>
         <losx>0</losx>

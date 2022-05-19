@@ -16,12 +16,13 @@ except:
     from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 
 import matplotlib.pylab as plt
-from matplotlib.patches import Rectangle
+
 
 fsize   = 8
 titsize = 10
 lblsize = 10
-fig_size = (8.7, 6.)
+fig_size = (8.7, 5.9)
+lwid = 2.5
 
 
 class plotWindow(QWidget):
@@ -52,31 +53,30 @@ class plotWindow(QWidget):
         self.tabs.addTab(new_tab, title)
 
 
-def fig_scatt(kin, color='#c00000'):
+def fig_reactivity(reac_d, Ti_keV, color='#d0d0d0'):
 
-    fig_sol = plt.figure('Solutions', fig_size, dpi=100)
-    ax_sol = fig_sol.add_subplot(projection='3d')
-    plt.plot([0, kin.in1.qmom[1]], [0, kin.in1.qmom[2]], [0, kin.in1.qmom[3]], 'k-')
-    plt.plot([0, kin.in2.qmom[1]], [0, kin.in2.qmom[2]], [0, kin.in2.qmom[3]], 'k--')
-    if hasattr(kin.prod1, 'qmom_b'):
-        plt.plot([0, kin.prod1.qmom_b[1]], [0, kin.prod1.qmom_b[2]], [0, kin.prod1.qmom_b[3]], 'b-')
-        plt.plot([0, kin.prod2.qmom_b[1]], [0, kin.prod2.qmom_b[2]], [0, kin.prod2.qmom_b[3]], 'b--')
-    plt.plot([0, kin.prod1.qmom_a[1]], [0, kin.prod1.qmom_a[2]], [0, kin.prod1.qmom_a[3]], 'r-')
-    plt.plot([0, kin.prod2.qmom_a[1]], [0, kin.prod2.qmom_a[2]], [0, kin.prod2.qmom_a[3]], 'r--')
-    plt.xlim([-200, 200])
-    plt.ylim([-200, 200])
+    fig_reac = plt.figure('Reac', fig_size, dpi=100, facecolor=color)
+    plt.cla()
+    for lbl, reac in reac_d.items():
+        plt.semilogy(Ti_keV, reac, label=lbl, linewidth=lwid)
+    plt.xlim([Ti_keV[0], Ti_keV[-1]])
+    plt.xlabel(r'T$_i$ [keV]')
+    plt.ylabel(r'Reactivity [cm$^3$/s]')
+    plt.grid()
+    plt.legend(loc=4)
 
-    return fig_sol
+    return fig_reac
 
 
-def fig_cross(reac, theta, log_scale=False, color='#c00000'):
+def fig_cross(reac, theta, log_scale=False, color='#d0d0d0'):
 
-    fig_cs = plt.figure('Cross-sections', fig_size, dpi=100)
+    fig_cs = plt.figure('Cross-sections', fig_size, dpi=100, facecolor=color)
+    plt.cla()
     the_deg = np.degrees(theta)
     if log_scale:
-        plt.semilogy(the_deg, reac)
+        plt.semilogy(the_deg, reac, linewidth=lwid)
     else:
-        plt.plot(the_deg, reac)
+        plt.plot(the_deg, reac, linewidth=lwid)
     plt.xlim([the_deg[0], the_deg[-1]])
     plt.xlabel('Angle [deg]')
     plt.ylabel(r'$\frac{d\sigma}{d\Omega}$ [mbarn]')
@@ -84,24 +84,29 @@ def fig_cross(reac, theta, log_scale=False, color='#c00000'):
     return fig_cs
 
 
-def fig_reactivity(reac_d, Ti_keV):
+def fig_scatt(kin, color='#d0d0d0'):
 
-    fig_reac = plt.figure('Reac', fig_size, dpi=100)
-    for lbl, reac in reac_d.items():
-        plt.semilogy(Ti_keV, reac, label=lbl)
-    plt.xlim([Ti_keV[0], Ti_keV[-1]])
-    plt.xlabel(r'T$_i$ [keV]')
-    plt.ylabel(r'Reactivity [cm$^3$/s]')
-    plt.grid()
-    plt.legend(loc=2)
+    fig_sol = plt.figure('Solutions', fig_size, dpi=100, facecolor=color)
+    plt.cla()
+    ax_sol = fig_sol.add_subplot(projection='3d')
+    plt.plot([0, kin.in1.qmom[1]], [0, kin.in1.qmom[2]], [0, kin.in1.qmom[3]], 'k-', linewidth=lwid)
+    plt.plot([0, kin.in2.qmom[1]], [0, kin.in2.qmom[2]], [0, kin.in2.qmom[3]], 'k--', linewidth=lwid)
+    if hasattr(kin.prod1, 'qmom_b'):
+        plt.plot([0, kin.prod1.qmom_b[1]], [0, kin.prod1.qmom_b[2]], [0, kin.prod1.qmom_b[3]], 'b-', linewidth=lwid)
+        plt.plot([0, kin.prod2.qmom_b[1]], [0, kin.prod2.qmom_b[2]], [0, kin.prod2.qmom_b[3]], 'b--', linewidth=lwid)
+    plt.plot([0, kin.prod1.qmom_a[1]], [0, kin.prod1.qmom_a[2]], [0, kin.prod1.qmom_a[3]], 'r-', linewidth=lwid)
+    plt.plot([0, kin.prod2.qmom_a[1]], [0, kin.prod2.qmom_a[2]], [0, kin.prod2.qmom_a[3]], 'r--', linewidth=lwid)
+    plt.xlim([-200, 200])
+    plt.ylim([-200, 200])
 
-    return fig_reac
+    return fig_sol
 
 
-def fig_spec(Egrid, Espec):
+def fig_spec(Egrid, Espec, color='#d0d0d0'):
 
-    fig_spc = plt.figure('Spectrum', fig_size, dpi=100)
+    fig_spc = plt.figure('Spectrum', fig_size, dpi=100, facecolor=color)
+    plt.cla()
 #    plt.semilogy(Egrid, Espec)
-    plt.plot(Egrid, Espec)
+    plt.plot(Egrid, Espec, linewidth=lwid)
 
     return fig_spc
