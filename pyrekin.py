@@ -18,6 +18,7 @@ except:
 
 import numpy as np
 import matplotlib.pylab as plt
+from mpl_toolkits.mplot3d import Axes3D
 import dixm
 from reactivities import *
 import constants as con
