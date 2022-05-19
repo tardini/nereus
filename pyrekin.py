@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-__author__  = 'Giovanni Tardini (Tel. 1898)'
+__author__  = 'Giovanni Tardini (Tel. +49 89 3299-1898)'
 __version__ = '0.0.1'
-__date__    = '29.03.2022'
+__date__    = '19.05.2022'
 
 import os, sys, logging, webbrowser
 
