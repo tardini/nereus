@@ -358,8 +358,10 @@ class REKIN(QMainWindow):
         kin = ck.calc_reac(v1, v2, versor_out, 'dt')
 
         self.wid = plot_rekin.plotWindow()
-        fig_kine = plot_rekin.fig_scatt(kin)
+        fig_kine = plt.figure('Kinematics', (8.8, 5.9), dpi=100)
         self.wid.addPlot('Scattering kinematics', fig_kine)
+# Need to define axes after canvas creation, in order to rotate the figure interactively
+        plot_rekin.ax_scatt(fig_kine, kin)
         self.wid.show()
 
 

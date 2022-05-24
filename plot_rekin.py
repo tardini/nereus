@@ -16,7 +16,7 @@ except:
     from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 
 import matplotlib.pylab as plt
-
+from mpl_toolkits.mplot3d.axes3d import Axes3D
 
 fsize   = 8
 titsize = 10
@@ -86,23 +86,22 @@ def fig_cross(reac, theta, Egrid, log_scale=False, color='#d0d0d0'):
     return fig_cs
 
 
-def fig_scatt(kin, color='#d0d0d0'):
+def ax_scatt(fig_sol, kin, color='#d0d0d0'):
 
-    fig_sol = plt.figure('Solutions', fig_size, dpi=100, facecolor=color)
-    plt.cla()
-    ax_sol = fig_sol.add_subplot(projection='3d')
-    plt.plot([0, kin.in1.qmom[1]], [0, kin.in1.qmom[2]], [0, kin.in1.qmom[3]], 'k-', linewidth=lwid, label='In1')
-    plt.plot([0, kin.in2.qmom[1]], [0, kin.in2.qmom[2]], [0, kin.in2.qmom[3]], 'k--', linewidth=lwid, label='In2')
+#    plt.cla()
+    ax_sol = Axes3D(fig_sol) #.add_subplot(projection='3d')
+    ax_sol.plot([0, kin.in1.qmom[1]], [0, kin.in1.qmom[2]], [0, kin.in1.qmom[3]], 'k-', linewidth=lwid, label='In1')
+    ax_sol.plot([0, kin.in2.qmom[1]], [0, kin.in2.qmom[2]], [0, kin.in2.qmom[3]], 'k--', linewidth=lwid, label='In2')
     if hasattr(kin.prod1, 'qmom_b'):
-        plt.plot([0, kin.prod1.qmom_b[1]], [0, kin.prod1.qmom_b[2]], [0, kin.prod1.qmom_b[3]], 'b-', linewidth=lwid, label='out1_b')
-        plt.plot([0, kin.prod2.qmom_b[1]], [0, kin.prod2.qmom_b[2]], [0, kin.prod2.qmom_b[3]], 'b--', linewidth=lwid, label='out2_b')
-    plt.plot([0, kin.prod1.qmom_a[1]], [0, kin.prod1.qmom_a[2]], [0, kin.prod1.qmom_a[3]], 'r-', linewidth=lwid, label='out1_a')
-    plt.plot([0, kin.prod2.qmom_a[1]], [0, kin.prod2.qmom_a[2]], [0, kin.prod2.qmom_a[3]], 'r--', linewidth=lwid, label='out2_a')
-    plt.xlim([-200, 200])
-    plt.ylim([-200, 200])
-    plt.legend()
+        ax_sol.plot([0, kin.prod1.qmom_b[1]], [0, kin.prod1.qmom_b[2]], [0, kin.prod1.qmom_b[3]], 'b-', linewidth=lwid, label='out1_b')
+        ax_sol.plot([0, kin.prod2.qmom_b[1]], [0, kin.prod2.qmom_b[2]], [0, kin.prod2.qmom_b[3]], 'b--', linewidth=lwid, label='out2_b')
+    ax_sol.plot([0, kin.prod1.qmom_a[1]], [0, kin.prod1.qmom_a[2]], [0, kin.prod1.qmom_a[3]], 'r-', linewidth=lwid, label='out1_a')
+    ax_sol.plot([0, kin.prod2.qmom_a[1]], [0, kin.prod2.qmom_a[2]], [0, kin.prod2.qmom_a[3]], 'r--', linewidth=lwid, label='out2_a')
+    ax_sol.set_xlim([-200, 200])
+    ax_sol.set_ylim([-200, 200])
+    ax_sol.legend()
 
-    return fig_sol
+#    return fig_sol
 
 
 def fig_spec(Egrid, Espec, color='#d0d0d0'):
