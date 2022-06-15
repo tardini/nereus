@@ -75,23 +75,51 @@ def etree_to_dict(t):
     return d
 
 
-class DIX:
+def xml2dict(f_xml):
+    with open(f_xml, 'r') as f:
+        xml_str = f.read()
+    etree = ET.XML(xml_str)
+    return etree_to_dict(etree)
 
 
-    def xml2dict(self, f_xml):
-        with open(f_xml, 'r') as f:
-            xml_str = f.read()
-        etree = ET.XML(xml_str)
-        return etree_to_dict(etree)
+def dict2xml(xml_d, f_xml):
 
-    def dict2xml(self, xml_d, f_xml):
+    xml_str = dict_to_etree(xml_d)
+    xdom = minidom.parseString(xml_str)
+    xml_pretty = xdom.toprettyxml(indent='    ')
 
-        xml_str = dict_to_etree(xml_d)
-        xdom = minidom.parseString(xml_str)
-        xml_pretty = xdom.toprettyxml(indent='    ')
+    with open(f_xml, 'w') as f:
+        f.write(xml_pretty)
 
-        with open(f_xml, 'w') as f:
-            f.write(xml_pretty)
+
+def xml2val_node(xml_node):
+
+    setup_node = {}
+    for key, val_d in xml_node.items():
+        if val_d['@type'] == 'str':
+            if '#text' in val_d.keys():
+                setup_node[key] = val_d['#text']
+            else:
+                setup_node[key] = ''
+        elif val_d['@type'] == 'bool':
+            if val_d['#text'].lower() == 'true':
+                setup_node[key] = True
+            else:
+                setup_node[key] = False
+        elif val_d['@type'] == 'int':
+            setup_node[key] = int(val_d['#text'])
+        elif val_d['@type'] == 'flt':
+            setup_node[key] = float(val_d['#text'])
+
+    return setup_node
+
+
+def xml2val_dic(xml_d):
+
+    setup_d = {}
+    for node, xml_node in xml_d.items():
+        setup_d[node] = xml2val_node(xml_node)
+    return setup_d
 
 
 if __name__ == '__main__':
@@ -99,10 +127,9 @@ if __name__ == '__main__':
     fxml = 'deep.xml'
     fxml_out = 'deep_out.xml'
 
-    dx = DIX()
-    c = dx.xml2dict(fxml)
+    c = xml2dict(fxml)
     for key, val in c.items():
         print(key)
         for key2, val2 in val.items():
             print(key2, val2)
-    dx.dict2xml(c, fxml_out)
+    dict2xml(c, fxml_out)
