@@ -1,38 +1,38 @@
 <?xml version="1.0" ?>
 <main>
     <reac>
-        <ddn3he>true</ddn3he>
-        <ddpt>true</ddpt>
-        <dt>true</dt>
-        <d3he>true</d3he>
+        <ddn3he type="bool" label="D(D,n)3He">true</ddn3he>
+        <ddpt   type="bool" label="D(D,P)T">true</ddpt>
+        <dt     type="bool" label="D(T,n)He4">true</dt>
+        <d3he   type="bool" label="D(He3,P)He4">true</d3he>
     </reac>
     <cross>
-        <E>np.linspace(0.2, 0.6, 5)</E>
-        <reac>ddn3he</reac>
-        <Z1>2</Z1>
-        <Z2>2</Z2>
-        <log_scale>false</log_scale>
+        <E type="str">np.linspace(0.2, 0.6, 5)</E>
+        <reac type="str">ddn3he</reac>
+        <Z1 type="int">2</Z1>
+        <Z2 type="int">2</Z2>
+        <log_scale type="bool">false</log_scale>
     </cross>
     <kinematics>
-        <reac>dt</reac>
-        <v1x>1e-2</v1x>
-        <v1y>1e-2</v1y>
-        <v1z>1e-2</v1z>
-        <v2x>5e-3</v2x>
-        <v2y>0</v2y>
-        <v2z>0</v2z>
-        <losx>1</losx>
-        <losy>0</losy>
-        <losz>0</losz>
+        <reac type="str">dt</reac>
+        <v1x type="flt">1e-2</v1x>
+        <v1y type="flt">1e-2</v1y>
+        <v1z type="flt">1e-2</v1z>
+        <v2x type="flt">5e-3</v2x>
+        <v2y type="flt">0</v2y>
+        <v2z type="flt">0</v2z>
+        <losx type="flt">1</losx>
+        <losy type="flt">0</losy>
+        <losz type="flt">0</losz>
     </kinematics>
     <spectrum>
-        <reac>ddn3he</reac>
-        <dens>4e19</dens>
-        <n_sample>1000</n_sample>
-        <E1>0.01</E1>
-        <E2>0.01</E2>
-        <losx>0</losx>
-        <losy>0</losy>
-        <losz>1</losz>
+        <reac type="str">ddn3he</reac>
+        <dens type="flt">4e19</dens>
+        <n_sample type="int">1000</n_sample>
+        <E1 type="flt">0.01</E1>
+        <E2 type="flt">0.01</E2>
+        <losx type="flt">0</losx>
+        <losy type="flt">0</losy>
+        <losz type="flt">1</losz>
     </spectrum>
 </main>

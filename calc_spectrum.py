@@ -33,11 +33,13 @@ def convolve_dists(v1_all, v2_all, versor_out, reac):
     vrel_sq = [0.]
     m_prod_12 = m_prod1**2 - m_prod2**2
     m_12 = 1./(m_in1 + m_in2)
-    for v1 in v1_all:
+    for j in range(len(v1_all)):
+        v1 = v1_all[j]
         gamma_in1 = 1./np.sqrt(1 - np.sum(v1**2))
         E_in1 = m_in1*gamma_in1
         p_in1 = E_in1*v1
-        for v2 in v2_all:
+        for i in range(len(v2_all)):
+            v2 = v2_all[j]
             vcm = (m_in1*v1 + m_in2*v2) * m_12
             v1_cm_sq = 0.
             v2_cm_sq = 0.

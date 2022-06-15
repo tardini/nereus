@@ -142,7 +142,7 @@ https://mathworld.wolfram.com/SpherePointPicking.html'''
 class calc_reac:
 
 
-    def __init__(self, v1, v2, versor_out, reac):
+    def __init__(self, v1, v2, versor_out, reac, label=''):
 
 
         versor_out = np.array(versor_out, dtype=np.float32)
@@ -151,7 +151,7 @@ class calc_reac:
         self.in2   = reaction[reac].in2
         self.prod1 = reaction[reac].prod1
         self.prod2 = reaction[reac].prod2
-        self.reac  = reaction[reac].label
+        self.reac  = label
 
         self.in1.v = np.array(v1)
         self.in2.v = np.array(v2)

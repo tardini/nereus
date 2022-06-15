@@ -8,18 +8,18 @@ import os, sys, logging, webbrowser
 
 try:
     from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QGridLayout, QMenu, QAction, QLabel, QPushButton, QLineEdit, QCheckBox, QFileDialog, QRadioButton, QButtonGroup, QTabWidget, QVBoxLayout, QComboBox
-    from PyQt5.QtGui import QPixmap, QIcon
+    from PyQt5.QtGui import QPixmap, QIcon, QIntValidator, QDoubleValidator
     from PyQt5.QtCore import Qt, QRect, QSize
     qt5 = True
 except:
-    from PyQt4.QtCore import Qt, QRect, QSize
+    from PyQt4.QtCore import Qt, QRect, QSize, QIntValidator, QDoubleValidator
     from PyQt4.QtGui import QPixmap, QIcon, QMainWindow, QWidget, QApplication, QGridLayout, QMenu, QAction, QLabel, QPushButton, QLineEdit, QCheckBox, QFileDialog, QRadioButton, QButtonGroup, QTabWidget, QVBoxLayout, QComboBox
     qt5 = False
 
 import numpy as np
 import matplotlib.pylab as plt
 from mpl_toolkits.mplot3d import Axes3D
-import dixm
+import dicxml
 from reactivities import *
 import constants as con
 import calc_cross_section as cs
@@ -27,9 +27,6 @@ import calc_kinematics as ck
 import calc_spectrum as spc
 import plot_rekin
 from reactions import reaction
-
-
-xml = dixm.DIX()
 
 os.environ['BROWSER'] = '/usr/bin/firefox'
 
@@ -143,7 +140,8 @@ class REKIN(QMainWindow):
 
 # User options
 
-        self.setup_init = xml.xml2dict('%s/xml/default.xml' %rekin_dir)['main']
+        self.xml_d = dicxml.xml2dict('%s/xml/default.xml' %rekin_dir)['main']
+        self.setup_init = dicxml.xml2val_dic(self.xml_d)
         self.gui = {}
         for node in self.setup_init.keys():
             self.gui[node] = {}
@@ -204,25 +202,31 @@ class REKIN(QMainWindow):
 
         for key in checkbuts:
             if key in reaction.keys():
-                lbl = reaction[key].label
+                lbl = self.xml_d[node][key]['@label']
             else:
                 lbl = key
             self.gui[node][key] = QCheckBox(lbl)
             layout.addWidget(self.gui[node][key], jrow, 0, 1, 2)
-            if self.setup_init[node][key].lower().strip() == 'true':
+            if self.setup_init[node][key]:
                 self.gui[node][key].setChecked(True)
             jrow += 1
 
         for key in entries:
             val = self.setup_init[node][key]
             if key in reaction.keys():
-                lbl = reaction[key].label
+                lbl = self.xml_d[node][key]['@label']
             else:
                 lbl = key
             qlbl = QLabel(lbl)
             qlbl.setFixedWidth(lbl_wid)
-            self.gui[node][key] = QLineEdit(val)
+            self.gui[node][key] = QLineEdit(str(val))
             self.gui[node][key].setFixedWidth(ent_wid)
+            if isinstance(val, int):
+                valid = QIntValidator()
+                self.gui[node][key].setValidator(valid)
+            elif isinstance(val, float):
+                valid = QDoubleValidator()
+                self.gui[node][key].setValidator(valid)
             layout.addWidget(qlbl         , jrow, 0)
             layout.addWidget(self.gui[node][key], jrow, 1)
             jrow += 1
@@ -240,24 +244,46 @@ class REKIN(QMainWindow):
         layout.setColumnStretch(layout.columnCount(), 1)
 
 
-    def get_gui(self, node):
+    def gui2xmld(self):
+        '''Returns a dic of the xml-type, #text and @attr'''
+        dpsd_dic = {}
+        for node in self.gui.keys():
+            dpsd_dic[node] = self.get_gui_tab(node)
+        return dpsd_dic
 
-        rekin_dic = {}
+
+    def get_gui_tab(self, node):
+
+        node_dic = {}
         for key, val in self.gui[node].items():
+            node_dic[key] = {}
             if isinstance(val, QLineEdit):
-                rekin_dic[key] = val.text()
+                node_dic[key]['#text'] = val.text()
             elif isinstance(val, QCheckBox):
-                rekin_dic[key] = val.isChecked()
+                if val.isChecked():
+                    node_dic[key]['#text'] = 'true'
+                else:
+                    node_dic[key]['#text'] = 'false'
+            elif isinstance(val, QButtonGroup):
+                bid = val.checkedId()
+                node_dic[key]['#text'] = self.rblists[key][bid]
             elif isinstance(val, QComboBox):
-                rekin_dic[key] = val.itemText(val.currentIndex())
+                node_dic[key]['#text'] = val.itemText(val.currentIndex())
+            node_dic[key]['@type' ] = self.xml_d[node][key]['@type']
+            if '@label' in self.xml_d[node][key].keys():
+                node_dic[key]['@label'] = self.xml_d[node][key]['@label']
 
-        return rekin_dic
+        return node_dic
 
 
     def set_gui(self, xml_d):
 
         for node, val1 in xml_d.items():
-            for key, val in val1.items():
+            for key, vald in val1.items():
+                if '#text' in vald.keys():
+                    val = vald['#text']
+                else:
+                    val = ''
                 val = val.strip()
                 val_low = val.lower()
                 widget = self.gui[node][key]
@@ -290,27 +316,26 @@ class REKIN(QMainWindow):
             fxml = ftmp[0]
         else:
             fxml = str(ftmp)
-        setup_d = xml.xml2dict(fxml)
+        setup_d = dicxml.xml2dict(fxml)
         self.set_gui(setup_d['main'])
 
 
     def save_xml(self):
 
-        out_dic = {'main': {}}
-        for node in self.gui.keys():
-            out_dic['main'][node] = self.get_gui(node)
+        out_dic = {}
+        out_dic['main'] = self.gui2xmld()
         ftmp = QFileDialog.getSaveFileName(self, 'Save file', \
             '%s/xml' %rekin_dir, "xml files (*.xml)")
         if qt5:
             fxml = ftmp[0]
         else:
             fxml = str(ftmp)
-        xml.dict2xml(out_dic, fxml)
+        dicxml.dict2xml(out_dic, fxml)
 
 
     def reactivity(self):
 
-        rekin_dic = self.get_gui('reac')
+        reac_dic = self.get_gui_tab('reac')
 
         Ti_keV = np.linspace(1., 60., 60)
         
@@ -319,8 +344,8 @@ class REKIN(QMainWindow):
         reac_d = {}
 
         for key, reac in reaction.items():
-            if hasattr(reac, 'coeff_reac') and rekin_dic[key]:
-                reac_d[reac.label] = react(Ti_keV, key)
+            if hasattr(reac, 'coeff_reac') and reac_dic[key]:
+                reac_d[self.xml_d['reac'][key]['@label']] = react(Ti_keV, key)
 
         self.wid = plot_rekin.plotWindow()
         fig_reac =  plot_rekin.fig_reactivity(reac_d, Ti_keV)       
@@ -330,32 +355,35 @@ class REKIN(QMainWindow):
 
     def cross_section(self):
 
-        rekin_dic = self.get_gui('cross')
+        cross_dic = dicxml.xml2val_node(self.get_gui_tab('cross'))
 
-        Egrid = np.array([float(x) for x in eval(rekin_dic['E'])], dtype=np.float32)
+        Egrid = np.array([float(x) for x in eval(cross_dic['E'])], dtype=np.float32)
         logger.info('Cross-section')
 
         theta = np.linspace(0, np.pi, 61)
         mu_grid = np.cos(theta)
-        reac_lbl = rekin_dic['reac'].lower().strip()
+        reac_lbl = cross_dic['reac']
         sigma = cs.sigma_diff(Egrid, mu_grid, reac_lbl, 2, 2)
 
         self.wid = plot_rekin.plotWindow()
-        fig_cross = plot_rekin.fig_cross(sigma, theta, Egrid, log_scale=rekin_dic['log_scale'])
+        fig_cross = plot_rekin.fig_cross(sigma, theta, Egrid, log_scale=cross_dic['log_scale'])
         self.wid.addPlot('Cross-sections', fig_cross)
         self.wid.show()
 
 
     def scatt_kine(self):
 
-        rekin_dic = self.get_gui('kinematics')
+        scatt_dic = dicxml.xml2val_node(self.get_gui_tab('kinematics'))
 
         logger.info('Scattering kinematics')
-        reac_lbl = rekin_dic['reac'].lower().strip()
-        v1 = [float(rekin_dic['v1x']), float(rekin_dic['v1y']), float(rekin_dic['v1z'])]
-        v2 = [float(rekin_dic['v2x']), float(rekin_dic['v2y']), float(rekin_dic['v2z'])]
-        versor_out = [float(rekin_dic['losx']), float(rekin_dic['losy']), float(rekin_dic['losz'])]
-        kin = ck.calc_reac(v1, v2, versor_out, 'dt')
+        reac_lbl = scatt_dic['reac']
+        v1 = [scatt_dic['v1x'], scatt_dic['v1y'], scatt_dic['v1z']]
+        v2 = [scatt_dic['v2x'], scatt_dic['v2y'], scatt_dic['v2z']]
+        versor_out = [scatt_dic['losx'], scatt_dic['losy'], scatt_dic['losz']]
+        print(v1)
+        print(versor_out)
+
+        kin = ck.calc_reac(v1, v2, versor_out, reac_lbl, label=self.xml_d['reac'][reac_lbl]['@label'])
 
         self.wid = plot_rekin.plotWindow()
         fig_kine = plt.figure('Kinematics', (8.8, 5.9), dpi=100)
@@ -367,17 +395,17 @@ class REKIN(QMainWindow):
 
     def spectra(self):
 
-        rekin_dic = self.get_gui('spectrum')
+        rekin_dic = dicxml.xml2val_node(self.get_gui_tab('spectrum'))
 
         logger.info('Spectra')
-        dens = float(rekin_dic['dens'])
+        dens = rekin_dic['dens']
         reac_lbl = rekin_dic['reac'].lower().strip()
-        n_sample = int(rekin_dic['n_sample'])
-        E1 = float(rekin_dic['E1'])
-        E2 = float(rekin_dic['E2'])
-        losx = float(rekin_dic['losx'])
-        losy = float(rekin_dic['losy'])
-        losz = float(rekin_dic['losz'])
+        n_sample = rekin_dic['n_sample']
+        E1 = rekin_dic['E1']
+        E2 = rekin_dic['E2']
+        losx = rekin_dic['losx']
+        losy = rekin_dic['losy']
+        losz = rekin_dic['losz']
         Earr, weight = spc.mono_iso(E1, E2, [losx, losy, losz], reac_lbl, n_sample=n_sample)
         Egrid, Espec = spc.calc_spectrum(dens, Earr, weight)
 
