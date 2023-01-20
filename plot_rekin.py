@@ -58,8 +58,9 @@ def fig_reactivity(reac_d, Ti_keV, color='#d0d0d0'):
     fig_reac = plt.figure('Reac', fig_size, dpi=100, facecolor=color)
     plt.cla()
     for lbl, reac in reac_d.items():
-        plt.semilogy(Ti_keV, reac, label=lbl, linewidth=lwid)
+        plt.loglog(Ti_keV, reac, label=lbl, linewidth=lwid)
     plt.xlim([Ti_keV[0], Ti_keV[-1]])
+    plt.ylim([1e-19, 1e-14])
     plt.xlabel(r'T$_i$ [keV]')
     plt.ylabel(r'Reactivity [cm$^3$/s]')
     plt.grid()

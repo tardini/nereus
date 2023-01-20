@@ -337,7 +337,7 @@ class REKIN(QMainWindow):
 
         reac_dic = self.get_gui_tab('reac')
 
-        Ti_keV = np.linspace(1., 60., 60)
+        Ti_keV = np.linspace(1., 1000., 1000)
         
         logger.info('Reactivities')
 
