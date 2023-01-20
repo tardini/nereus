@@ -40,6 +40,7 @@ class he4:
     Z = 2
 
 # Reaction classes
+# neutrons/paper/bosch_nf92.pdf page 625 table VII
 
 reaction = {}
 
@@ -52,21 +53,21 @@ reaction['ddn3he'].in1 = deuteron
 reaction['ddn3he'].in2 = deuteron
 reaction['ddn3he'].prod1 = neutron
 reaction['ddn3he'].prod2 = he3
-reaction['ddn3he'].coeff_reac = [5.65718e-12, 3.41267e-3, 1.99167e-3, 0, 1.05060e-5, 0, 0]
+reaction['ddn3he'].coeff_reac = [5.4336e-12, 5.85778e-3, 7.68222-3, 0, -2.964e-6, 0, 0]
 
 reaction['ddpt'] = reac_class()
 reaction['ddpt'].in1 = deuteron
 reaction['ddpt'].in2 = deuteron
 reaction['ddpt'].prod1 = proton
 reaction['ddpt'].prod2 = triton
-reaction['ddpt'].coeff_reac = [5.43360e-12, 5.85778e-3, 7.68222e-3, 0, -2.96400e-6, 0, 0]
+reaction['ddpt'].coeff_reac = [5.65718e-12, 3.41267e-3, 1.99167e-3, 0, 1.05060e-5, 0, 0]
 
 reaction['d3he'] = reac_class()
-reaction['d3he'].in1 = deuteron
-reaction['d3he'].in2 = he3
+reaction['d3he'].in1 = he3
+reaction['d3he'].in2 = deuteron
 reaction['d3he'].prod1 = proton
 reaction['d3he'].prod2 = he4
-reaction['d3he'].coeff_reac = [5.51036e-10, 6.41918e-3, -202896e-3, -1.9108e-5,  1.35776e-4, 0, 0]
+reaction['d3he'].coeff_reac = [5.51036e-10, 6.41918e-3, -2.02896e-3, -1.9108e-5,  1.35776e-4, 0, 0]
 
 reaction['dt'] = reac_class()
 reaction['dt'].in1 = deuteron

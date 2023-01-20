@@ -3,6 +3,8 @@ from reactions import reaction
 from constants import alpha
 
 # ControlRoom/source/reactivities.cpp
+#
+# neutrons/paper/bosch_nf92.pdf
 # Bosch-Hale, table VII
 # Ti validity range (keV)
 #   DT    : 0.2-100
