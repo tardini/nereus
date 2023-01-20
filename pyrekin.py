@@ -152,7 +152,7 @@ class REKIN(QMainWindow):
 #------------
 
         cb = ['ddn3he', 'ddpt', 'dt', 'd3he']
-        self.new_tab(reac_layout, 'reac', checkbuts=cb)
+        self.fill_layout(reac_layout, 'reac', checkbuts=cb)
 
 #---------------
 # Cross-sections
@@ -161,7 +161,7 @@ class REKIN(QMainWindow):
         entries = ['E', 'Z1', 'Z2']
         cb = ['log_scale']
         combos = {'reac': reaction.keys()}
-        self.new_tab(cross_layout, 'cross', entries=entries, checkbuts=cb, combos=combos)
+        self.fill_layout(cross_layout, 'cross', entries=entries, checkbuts=cb, combos=combos)
 
 #-----------
 # Kinematics
@@ -169,7 +169,7 @@ class REKIN(QMainWindow):
 
         entries = ['v1x', 'v1y', 'v1z', 'v2x', 'v2y', 'v2z', 'losx', 'losy', 'losz']
         combos = {'reac': reaction.keys()}
-        self.new_tab(kin_layout, 'kinematics', entries=entries, combos=combos, lbl_wid=40, ent_wid=80)
+        self.fill_layout(kin_layout, 'kinematics', entries=entries, combos=combos, lbl_wid=40, ent_wid=80)
 
 #--------
 # Spectra
@@ -177,7 +177,7 @@ class REKIN(QMainWindow):
 
         entries = ['dens', 'E1', 'E2', 'losx', 'losy', 'losz', 'n_sample']
         combos = {'reac': reaction.keys()}
-        self.new_tab(spec_layout, 'spectrum', entries=entries, combos=combos)
+        self.fill_layout(spec_layout, 'spectrum', entries=entries, combos=combos)
 
 #-----------
 # GUI layout
@@ -195,7 +195,7 @@ class REKIN(QMainWindow):
         webbrowser.open('https://www.aug.ipp.mpg.de/~git/rekin/index.html')
 
 
-    def new_tab(self, layout, node, entries=[], checkbuts=[], combos={}, lbl_wid=140, ent_wid=180):
+    def fill_layout(self, layout, node, entries=[], checkbuts=[], combos={}, lbl_wid=140, ent_wid=180, col_shift=0):
 # Checkbutton
 
         jrow = 0
@@ -206,7 +206,7 @@ class REKIN(QMainWindow):
             else:
                 lbl = key
             self.gui[node][key] = QCheckBox(lbl)
-            layout.addWidget(self.gui[node][key], jrow, 0, 1, 2)
+            layout.addWidget(self.gui[node][key], jrow, col_shift)
             if self.setup_init[node][key]:
                 self.gui[node][key].setChecked(True)
             jrow += 1
@@ -227,8 +227,8 @@ class REKIN(QMainWindow):
             elif isinstance(val, float):
                 valid = QDoubleValidator()
                 self.gui[node][key].setValidator(valid)
-            layout.addWidget(qlbl         , jrow, 0)
-            layout.addWidget(self.gui[node][key], jrow, 1)
+            layout.addWidget(qlbl               , jrow, col_shift)
+            layout.addWidget(self.gui[node][key], jrow, col_shift+1)
             jrow += 1
 
         for key, combs in combos.items():
@@ -237,7 +237,7 @@ class REKIN(QMainWindow):
                 self.gui[node][key].addItem(comb.strip())
             index = self.gui[node][key].findText(self.setup_init[node][key].strip())
             self.gui[node][key].setCurrentIndex(index)
-            layout.addWidget(self.gui[node][key], jrow, 0, 1, 2)
+            layout.addWidget(self.gui[node][key], jrow, col_shift)
             jrow += 1
 
         layout.setRowStretch(layout.rowCount(), 1)

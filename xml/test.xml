@@ -1,0 +1,38 @@
+<?xml version="1.0" ?>
+<main>
+    <reac>
+        <ddn3he label="D(D,n)3He" type="bool">true</ddn3he>
+        <ddpt label="D(D,P)T" type="bool">true</ddpt>
+        <dt label="D(T,n)He4" type="bool">true</dt>
+        <d3he label="D(He3,P)He4" type="bool">true</d3he>
+    </reac>
+    <cross>
+        <log_scale type="bool">false</log_scale>
+        <E type="str">np.linspace(0.2, 0.6, 5)</E>
+        <Z1 type="int">2</Z1>
+        <Z2 type="int">2</Z2>
+        <reac type="str">ddn3he</reac>
+    </cross>
+    <kinematics>
+        <v1x type="flt">1e-2</v1x>
+        <v1y type="flt">1e-2</v1y>
+        <v1z type="flt">1e-2</v1z>
+        <v2x type="flt">5e-3</v2x>
+        <v2y type="flt">0</v2y>
+        <v2z type="flt">0</v2z>
+        <losx type="flt">1</losx>
+        <losy type="flt">0</losy>
+        <losz type="flt">0</losz>
+        <reac type="str">dt</reac>
+    </kinematics>
+    <spectrum>
+        <dens type="flt">4e19</dens>
+        <E1 type="flt">0.01</E1>
+        <E2 type="flt">0.01</E2>
+        <losx type="flt">0</losx>
+        <losy type="flt">0</losy>
+        <losz type="flt">1</losz>
+        <n_sample type="int">1000</n_sample>
+        <reac type="str">ddn3he</reac>
+    </spectrum>
+</main>

@@ -25,7 +25,7 @@ def react(T_keV, reac_lbl):
     Bg = np.pi * alpha * reac.in1.Z * reac.in2.Z * np.sqrt(2 * mu_c2)
     theta = T_keV/(  1 - \
         (T_keV * (coeff[1] + T_keV * (coeff[3] + T_keV * coeff[5]))) / \
-        (1 + T_keV * (coeff[2] + T_keV * (coeff[4] + T_keV * coeff[4])))  \
+        (1 + T_keV * (coeff[2] + T_keV * (coeff[4] + T_keV * coeff[6])))  \
     )
     csi = (Bg**2/(4*theta))**0.333
     react = coeff[0] * theta * np.sqrt(csi/(mu_c2 * T_keV**3)) * np.exp(-3*csi)
