@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 import numba as nb
-import constants as con
+import constants as const
 from reactions import reaction
 import calc_kinematics as ck
 import calc_cross_section as cs
@@ -11,21 +11,21 @@ hnd = logging.StreamHandler()
 hnd.setFormatter(fmt)
 logger = logging.getLogger('calc_spectrum')
 logger.addHandler(hnd)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 @nb.njit
 def convolve_dists(v1_all, v2_all, versor_out, reac):
 
-    if reac == 'dt':
-        m_in1   = con.mDc2
-        m_in2   = con.mTc2
-        m_prod1 = con.mnc2
-        m_prod2 = con.mHe4c2
-    elif reac == 'ddn3he':
-        m_in1   = con.mDc2
-        m_in2   = con.mDc2
-        m_prod1 = con.mnc2
-        m_prod2 = con.mHe3c2
+    if reac == 'D(T,n)4He':
+        m_in1   = const.mDc2
+        m_in2   = const.mTc2
+        m_prod1 = const.mnc2
+        m_prod2 = const.mHe4c2
+    elif reac == 'D(D,n)3He':
+        m_in1   = const.mDc2
+        m_in2   = const.mDc2
+        m_prod1 = const.mnc2
+        m_prod2 = const.mHe3c2
 
     E_out = [0.] # numba needs it, then discard
     Ekin_out = [0.]
@@ -33,6 +33,7 @@ def convolve_dists(v1_all, v2_all, versor_out, reac):
     vrel_sq = [0.]
     m_prod_12 = m_prod1**2 - m_prod2**2
     m_12 = 1./(m_in1 + m_in2)
+
     for j in range(len(v1_all)):
         v1 = v1_all[j]
         gamma_in1 = 1./np.sqrt(1 - np.sum(v1**2))

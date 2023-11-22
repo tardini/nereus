@@ -7,9 +7,9 @@ import cross_section_tables as cs_tab
 def sigma_diff(E_in_MeV, mu_in, reac, Z1=None, Z2=None, paired=False):
     '''General method redirecting to the relevant reaction method'''
 
-    if reac in ('dp', 'd3he', 'alphad', 'alphat', 'd3healphap'):
+    if reac in ('dp', 'd3he', 'alphad', 'alphat', 'D(He3,P)He4'):
         return tabulated_sigma_diff(E_in_MeV, mu_in, reac, paired=paired)
-    elif reac in ('dt', 'ddn3he'):
+    elif reac in ('D(T,n)He4', 'D(D,n)3He'):
         return legendre_sigma_diff(E_in_MeV, mu_in, reac, paired=paired)
     elif Z1 is not None:
         return coulomb_sigma_diff(E_in_MeV, mu_in, Z1, Z2)
@@ -43,7 +43,7 @@ def tabulated_sigma_diff(E_in_MeV, mu_in, reac, paired=False):
         cs = cs_tab.alphad
     elif reac == 'alphat':
         cs = cs_tab.alphat
-    elif reac == 'd3healphap':
+    elif reac == 'D(He3,P)He4':
         cs = cs_tab.D3HeAlphaP
     f = interp2d(cs.En, cs.mu, cs.sigma_diff, kind='linear')
     E_in_MeV = np.atleast_1d(E_in_MeV)
@@ -65,9 +65,9 @@ def legendre_sigma_diff(E_in_MeV, mu_in, reac, paired=False):
     E_in_MeV = np.atleast_1d(E_in_MeV)
     mu_in    = np.atleast_1d(mu_in)
 
-    if reac == 'dt':
+    if reac == 'D(T,n)He4':
         cs = cs_tab.DT
-    elif reac == 'ddn3he':
+    elif reac == 'D(D,n)3He':
         cs = cs_tab.DDn3He
     n_leg = cs.leg_coeff.shape[1]
     data = interp1d(cs.En, cs.leg_coeff, axis=0)
@@ -87,9 +87,9 @@ def legendre_sigma_diff(E_in_MeV, mu_in, reac, paired=False):
 
 def legendre_sigma_tot(E_in_MeV, reac, Emin_MeV=5.e-4):
 
-    if reac == 'dt':
+    if reac == 'D(T,n)He4':
         cs = cs_tab.DT
-    elif reac == 'ddn3he':
+    elif reac == 'D(D,n)3He':
         cs = cs_tab.DDn3He
 
     E_in_MeV = np.atleast_1d(E_in_MeV)
@@ -119,7 +119,7 @@ if __name__ == '__main__':
 
 # Total - correct, page 9 of ControlRoom manual!
     E = 0.5
-    dttot = legendre_sigma_tot(E, reac='dt')
+    dttot = legendre_sigma_tot(E, reac='D(T,n)He4')
     print('DT tot cross-section for E=%8.4f MeV:' %E)
     print('%12.4e millibarn' %dttot)
 
@@ -127,7 +127,7 @@ if __name__ == '__main__':
     E = 1
     mu = -1
     print('DT cross-section for E=%8.4f MeV, mu=%6.3f:' %(E, mu))
-    dt_diff = sigma_diff(E, mu, reac='dt')
+    dt_diff = sigma_diff(E, mu, reac='D(T,n)He4')
     print('%12.4e millibarn' %dt_diff)
 
 # Differential tab-sigma_diff, DP:

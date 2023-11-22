@@ -4078,7 +4078,6 @@ class DDn3He:
     y = np.array([99.2, 97.7, 96.4, 95.1, 93.9, 92.7, 91.5, 90.5, 89.5, 88.6, 87.7, 86.8, 86.0], dtype=np.float32)
 
 
-
 class DT:
 
     '''Legendre-coefficients for the cross-section of the DT cross-section'''

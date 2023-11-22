@@ -4,7 +4,7 @@ __author__  = 'Giovanni Tardini (Tel. +49 89 3299-1898)'
 __version__ = '0.0.1'
 __date__    = '19.05.2022'
 
-import os, sys, logging, webbrowser
+import os, sys, logging, webbrowser, json
 
 try:
     from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QGridLayout, QMenu, QAction, QLabel, QPushButton, QLineEdit, QCheckBox, QFileDialog, QRadioButton, QButtonGroup, QTabWidget, QVBoxLayout, QComboBox
@@ -19,9 +19,7 @@ except:
 import numpy as np
 import matplotlib.pylab as plt
 from mpl_toolkits.mplot3d import Axes3D
-import dicxml
 from reactivities import *
-import constants as con
 import calc_cross_section as cs
 import calc_kinematics as ck
 import calc_spectrum as spc
@@ -96,10 +94,10 @@ class REKIN(QMainWindow):
 
         menubar = self.menuBar()
         fileMenu = QMenu('&File', self)
-        xmlMenu  = QMenu('&Setup', self)
+        jsonMenu  = QMenu('&Setup', self)
         helpMenu = QMenu('&Help', self)
         menubar.addMenu(fileMenu)
-        menubar.addMenu(xmlMenu)
+        menubar.addMenu(jsonMenu)
         menubar.addMenu(helpMenu)
 
         fmap = {'reac': self.reactivity, 'csec': self.cross_section, 'kine': self.scatt_kine, \
@@ -114,12 +112,12 @@ class REKIN(QMainWindow):
                 fileMenu.addSeparator()
             fileMenu.addAction(Action)
 
-        loadAction  = QAction('&Load Setup', xmlMenu)
-        saveAction  = QAction('&Save Setup', xmlMenu)
-        xmlMenu.addAction(loadAction)
-        xmlMenu.addAction(saveAction)
-        loadAction.triggered.connect(self.load_xml)
-        saveAction.triggered.connect(self.save_xml)
+        loadAction  = QAction('&Load Setup', jsonMenu)
+        saveAction  = QAction('&Save Setup', jsonMenu)
+        jsonMenu.addAction(loadAction)
+        jsonMenu.addAction(saveAction)
+        loadAction.triggered.connect(self.load_json)
+        saveAction.triggered.connect(self.save_json)
 
         aboutAction = QAction('&Web docu', helpMenu)
         aboutAction.triggered.connect(self.about)
@@ -140,8 +138,9 @@ class REKIN(QMainWindow):
 
 # User options
 
-        self.xml_d = dicxml.xml2dict('%s/xml/default.xml' %rekin_dir)['main']
-        self.setup_init = dicxml.xml2val_dic(self.xml_d)
+        f_json = '%s/settings/default.json' %rekin_dir
+        with open(f_json, 'r') as fjson:
+            self.setup_init = json.load(fjson)
         self.gui = {}
         for node in self.setup_init.keys():
             self.gui[node] = {}
@@ -151,7 +150,7 @@ class REKIN(QMainWindow):
 # Reactivity
 #------------
 
-        cb = ['ddn3he', 'ddpt', 'dt', 'd3he']
+        cb = ['D(D,n)3He', 'D(D,P)T', 'D(T,n)He4', 'D(He3,P)He4']
         self.fill_layout(reac_layout, 'reac', checkbuts=cb)
 
 #---------------
@@ -201,11 +200,7 @@ class REKIN(QMainWindow):
         jrow = 0
 
         for key in checkbuts:
-            if key in reaction.keys():
-                lbl = self.xml_d[node][key]['@label']
-            else:
-                lbl = key
-            self.gui[node][key] = QCheckBox(lbl)
+            self.gui[node][key] = QCheckBox(key)
             layout.addWidget(self.gui[node][key], jrow, col_shift)
             if self.setup_init[node][key]:
                 self.gui[node][key].setChecked(True)
@@ -213,11 +208,7 @@ class REKIN(QMainWindow):
 
         for key in entries:
             val = self.setup_init[node][key]
-            if key in reaction.keys():
-                lbl = self.xml_d[node][key]['@label']
-            else:
-                lbl = key
-            qlbl = QLabel(lbl)
+            qlbl = QLabel(key)
             qlbl.setFixedWidth(lbl_wid)
             self.gui[node][key] = QLineEdit(str(val))
             self.gui[node][key].setFixedWidth(ent_wid)
@@ -244,12 +235,12 @@ class REKIN(QMainWindow):
         layout.setColumnStretch(layout.columnCount(), 1)
 
 
-    def gui2xmld(self):
-        '''Returns a dic of the xml-type, #text and @attr'''
-        dpsd_dic = {}
+    def gui2json(self):
+        '''Returns a dic'''
+        json_d = {}
         for node in self.gui.keys():
-            dpsd_dic[node] = self.get_gui_tab(node)
-        return dpsd_dic
+            json_d[node] = self.get_gui_tab(node)
+        return json_d
 
 
     def get_gui_tab(self, node):
@@ -258,79 +249,74 @@ class REKIN(QMainWindow):
         for key, val in self.gui[node].items():
             node_dic[key] = {}
             if isinstance(val, QLineEdit):
-                node_dic[key]['#text'] = val.text()
-            elif isinstance(val, QCheckBox):
-                if val.isChecked():
-                    node_dic[key]['#text'] = 'true'
+                if isinstance(self.setup_init[node][key], int):
+                    node_dic[key] = int(val.text())
+                elif isinstance(self.setup_init[node][key], float):
+                    node_dic[key] = float(val.text())
                 else:
-                    node_dic[key]['#text'] = 'false'
+                    node_dic[key] = val.text()
+            elif isinstance(val, QCheckBox):
+                node_dic[key] = val.isChecked()
+            elif isinstance(val, QComboBox):
+                node_dic[key] = val.currentText()
             elif isinstance(val, QButtonGroup):
                 bid = val.checkedId()
-                node_dic[key]['#text'] = self.rblists[key][bid]
-            elif isinstance(val, QComboBox):
-                node_dic[key]['#text'] = val.itemText(val.currentIndex())
-            node_dic[key]['@type' ] = self.xml_d[node][key]['@type']
-            if '@label' in self.xml_d[node][key].keys():
-                node_dic[key]['@label'] = self.xml_d[node][key]['@label']
+                node_dic[key] = self.rblists[key][bid]
 
         return node_dic
 
 
-    def set_gui(self, xml_d):
+    def set_gui(self, json_d):
 
-        for node, val1 in xml_d.items():
+        for node, val1 in json_d.items():
             for key, vald in val1.items():
-                if '#text' in vald.keys():
-                    val = vald['#text']
-                else:
-                    val = ''
-                val = val.strip()
-                val_low = val.lower()
+                print(key)
+                print(vald)
+                print('')
+                if key not in self.gui[node].keys():
+                    continue
                 widget = self.gui[node][key]
                 if isinstance(widget, QCheckBox):
-                    if val_low == 'false':
-                        widget.setChecked(False)
-                    elif val_low == 'true':
-                        widget.setChecked(True)
+                    widget.setChecked(vald)
                 elif isinstance(widget, QButtonGroup):
                     for but in widget.buttons():
-                        if but.text().lower() == val_low:
+                        if but.text() == vald:
                             but.setChecked(True)
                 elif isinstance(widget, QLineEdit):
-                    if val_low == '':
-                        widget.setText(' ')
-                    else:
-                        widget.setText(val)
+                    if vald:
+                        widget.setText(str(vald))
                 elif isinstance(widget, QComboBox):
                     for index in range(widget.count()):
-                        if widget.itemText(index).strip() == val.strip():
+                        if widget.itemText(index).strip() == vald.strip():
                             widget.setCurrentIndex(index)
                             break
 
 
-    def load_xml(self):
+    def load_json(self):
 
         ftmp = QFileDialog.getOpenFileName(self, 'Open file', \
-            '%s/xml' %rekin_dir, "xml files (*.xml)")
+            '%s/settings' %rekin_dir, "json files (*.json)")
         if qt5:
-            fxml = ftmp[0]
+            f_json = ftmp[0]
         else:
-            fxml = str(ftmp)
-        setup_d = dicxml.xml2dict(fxml)
-        self.set_gui(setup_d['main'])
+            f_json = str(ftmp)
+
+        with open(f_json) as fjson:
+            setup_d = json.load(fjson)
+        self.set_gui(setup_d)
 
 
-    def save_xml(self):
+    def save_json(self):
 
-        out_dic = {}
-        out_dic['main'] = self.gui2xmld()
+        out_dic = self.gui2json()
         ftmp = QFileDialog.getSaveFileName(self, 'Save file', \
-            '%s/xml' %rekin_dir, "xml files (*.xml)")
+            '%s/settings' %rekin_dir, "json files (*.json)")
         if qt5:
-            fxml = ftmp[0]
+            f_json = ftmp[0]
         else:
-            fxml = str(ftmp)
-        dicxml.dict2xml(out_dic, fxml)
+            f_json = str(ftmp)
+        with open(f_json, 'w') as fjson:
+            fjson.write(json.dumps(out_dic))
 
 
     def reactivity(self):
@@ -345,7 +331,7 @@ class REKIN(QMainWindow):
 
         for key, reac in reaction.items():
             if hasattr(reac, 'coeff_reac') and reac_dic[key]:
-                reac_d[self.xml_d['reac'][key]['@label']] = react(Ti_keV, key)
+                reac_d[key] = react(Ti_keV, key)
 
         self.wid = plot_rekin.plotWindow()
         fig_reac =  plot_rekin.fig_reactivity(reac_d, Ti_keV)       
@@ -355,7 +341,7 @@ class REKIN(QMainWindow):
 
     def cross_section(self):
 
-        cross_dic = dicxml.xml2val_node(self.get_gui_tab('cross'))
+        cross_dic = self.get_gui_tab('cross')
 
         Egrid = np.array([float(x) for x in eval(cross_dic['E'])], dtype=np.float32)
         logger.info('Cross-section')
@@ -373,17 +359,18 @@ class REKIN(QMainWindow):
 
     def scatt_kine(self):
 
-        scatt_dic = dicxml.xml2val_node(self.get_gui_tab('kinematics'))
-
+        scatt_dic = self.get_gui_tab('kinematics')
+        print('SD', scatt_dic)
         logger.info('Scattering kinematics')
         reac_lbl = scatt_dic['reac']
+        print(reac_lbl)
         v1 = [scatt_dic['v1x'], scatt_dic['v1y'], scatt_dic['v1z']]
         v2 = [scatt_dic['v2x'], scatt_dic['v2y'], scatt_dic['v2z']]
         versor_out = [scatt_dic['losx'], scatt_dic['losy'], scatt_dic['losz']]
         print(v1)
         print(versor_out)
 
-        kin = ck.calc_reac(v1, v2, versor_out, reac_lbl, label=self.xml_d['reac'][reac_lbl]['@label'])
+        kin = ck.calc_reac(v1, v2, versor_out, reac_lbl)
 
         self.wid = plot_rekin.plotWindow()
         fig_kine = plt.figure('Kinematics', (8.8, 5.9), dpi=100)
@@ -395,11 +382,11 @@ class REKIN(QMainWindow):
 
     def spectra(self):
 
-        rekin_dic = dicxml.xml2val_node(self.get_gui_tab('spectrum'))
+        rekin_dic = self.get_gui_tab('spectrum')
 
         logger.info('Spectra')
         dens = rekin_dic['dens']
-        reac_lbl = rekin_dic['reac'].lower().strip()
+        reac_lbl = rekin_dic['reac']
         n_sample = rekin_dic['n_sample']
         E1 = rekin_dic['E1']
         E2 = rekin_dic['E2']
