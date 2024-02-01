@@ -103,6 +103,8 @@ class REAC_GUI(QMainWindow):
         yhead = 44
         yline = 30
         ybar  = 54
+        yicon = 46
+        xicon = yicon
         ywin  = 15*yline + yhead + ybar
 
         qhead  = QWidget(self)
@@ -110,7 +112,7 @@ class REAC_GUI(QMainWindow):
         qtabs  = QTabWidget(self)
         qhead.setGeometry(QRect(0,     0, xwin, yhead))
         qbar.setGeometry(QRect(0, yhead, xwin, ybar))
-        qtabs.setGeometry(QRect(0, yhead+ybar, xwin, ywin-yhead-ybar))
+        qtabs.setGeometry(QRect(0, yhead+ybar+10, xwin, ywin-yhead-ybar-10))
         qtabs.setStyleSheet("QTabBar::tab { width: 160 }")
         header_grid = QGridLayout(qhead) 
         tbar_grid   = QGridLayout(qbar) 
@@ -183,8 +185,12 @@ class REAC_GUI(QMainWindow):
 
 # Icons
         dum_lbl  = QLabel(200*' ')
+        xpos = 0
+        ypos = 0
         for jpos, key in enumerate(qlbl.keys()):
             but = QPushButton()
+            but.setGeometry(xpos, xicon, ypos, yicon)
+            but.setStyleSheet("min-height: %dpx; padding: 0.0em 0.0em 0.0em 0.0em" %yicon)
             fgif = '%s/%s.gif' %(rekin_dir, key)
             if os.path.isfile(fgif):
                 but.setIcon(QIcon(fgif))
@@ -194,6 +200,7 @@ class REAC_GUI(QMainWindow):
             but.setIconSize(QSize(ybar, ybar))
             but.clicked.connect(fmap[key])
             tbar_grid.addWidget(but, 0, jpos)
+            xpos += yicon + 4
 
         tbar_grid.addWidget(dum_lbl, 0, jpos+1, 1, 10)
 
@@ -211,7 +218,7 @@ class REAC_GUI(QMainWindow):
 # Reactivity
 #------------
 
-        cb = ['D(D,n)3He', 'D(D,P)T', 'D(T,n)He4', 'D(He3,P)He4']
+        cb = ['D(D,n)3He', 'D(D,P)T', 'D(T,n)4He', 'D(3He,P)4He']
         self.fill_layout(reac_layout, 'reac', checkbuts=cb)
 
 #---------------
@@ -341,9 +348,6 @@ class REAC_GUI(QMainWindow):
 
         for node, val1 in json_d.items():
             for key, vald in val1.items():
-                print(key)
-                print(vald)
-                print('')
                 if key not in self.gui[node].keys():
                     continue
                 widget = self.gui[node][key]
@@ -433,10 +437,8 @@ class REAC_GUI(QMainWindow):
     def scatt_kine(self):
 
         scatt_dic = self.get_gui_tab('kinematics')
-        print('SD', scatt_dic)
         logger.info('Scattering kinematics')
         reac_lbl = scatt_dic['reac']
-        print(reac_lbl)
         v1 = [scatt_dic['v1x'], scatt_dic['v1y'], scatt_dic['v1z']]
         v2 = [scatt_dic['v2x'], scatt_dic['v2y'], scatt_dic['v2z']]
         versor_out = [scatt_dic['losx'], scatt_dic['losy'], scatt_dic['losz']]

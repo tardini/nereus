@@ -1,7 +1,7 @@
 {
-    "reac": {"D(D,n)3He": true, "D(D,P)T": true, "D(T,n)He4": true, "D(He3,P)He4": true},
+    "reac": {"D(D,n)3He": true, "D(D,P)T": true, "D(T,n)4He": true, "D(3He,P)4He": true},
     "cross": {"E": "np.linspace(0.2, 0.6, 5)", "reac": "D(D,n)3He", "Z1": 2, "Z2": 2, "log_scale": false},
-    "kinematics": {"reac": "D(T,n)He4", "v1x": 1e-2, "v1y": 1e-2, "v1z": 1e-2, "v2x": 5e-3, "v2y": 0.0, "v2z": 0.0, "losx": 1.0, "losy": 0.0, "losz": 0.0},
+    "kinematics": {"reac": "D(T,n)4He", "v1x": 1e-2, "v1y": 1e-2, "v1z": 1e-2, "v2x": 5e-3, "v2y": 0.0, "v2z": 0.0, "losx": 1.0, "losy": 0.0, "losz": 0.0},
     "spectrum": {"reac": "D(D,n)3He", "dens": 4e19, "n_sample": 1000, "E1": 0.01, "E2": 0.01, "losx": 0.0, "losy": 0.0, "losz": 1.0},
     "detector": {"disk_thick": 0.008, "cell_radius": 0.004, "coll_diam": 8.8e-2, "d_det_coll": 7.16, "det_radius": 0.0254, "tilt": 0.0,
         "tan_radius": 0.4, "y_det": -13.32, "z_det": 0.1, "Rmaj": 1.65, "r_chamb": 0.6, "label": "aug_BC501A", "writeLOS": false}

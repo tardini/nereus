@@ -1,15 +1,15 @@
+import json
 import numpy as np
 from scipy.interpolate import interp1d
 from constants import epsilon0, echarge
-import cross_section_tables as cs_tab
 
 
 def sigma_diff(E_in_MeV, mu_in, reac, Z1=None, Z2=None, paired=False):
     '''General method redirecting to the relevant reaction method'''
 
-    if reac in ('dp', 'd3he', 'alphad', 'alphat', 'D(He3,P)He4'):
+    if reac in ('DP', 'D3He', 'alphad', 'alphat', 'D(3He,P)4He'):
         return tabulated_sigma_diff(E_in_MeV, mu_in, reac, paired=paired)
-    elif reac in ('D(T,n)He4', 'D(D,n)3He'):
+    elif reac in ('D(T,n)4He', 'D(D,n)3He'):
         return legendre_sigma_diff(E_in_MeV, mu_in, reac, paired=paired)
     elif Z1 is not None:
         return coulomb_sigma_diff(E_in_MeV, mu_in, Z1, Z2)
@@ -35,17 +35,12 @@ def tabulated_sigma_diff(E_in_MeV, mu_in, reac, paired=False):
 
     from scipy.interpolate import interp2d
 
-    if reac == 'dp':
-        cs = cs_tab.DP
-    elif reac == 'd3he':
-        cs = cs_tab.D3He
-    elif reac == 'alphad':
-        cs = cs_tab.alphad
-    elif reac == 'alphat':
-        cs = cs_tab.alphat
-    elif reac == 'D(He3,P)He4':
-        cs = cs_tab.D3HeAlphaP
-    f = interp2d(cs.En, cs.mu, cs.sigma_diff, kind='linear')
+    f_json = 'crossSections/%s.json' %reac
+    with open(f_json, 'r') as fjson:
+        cs = json.load(fjson)
+
+    f = interp2d(cs['En'], cs['mu'], cs['sigmaDiff'], kind='linear')
+
     E_in_MeV = np.atleast_1d(E_in_MeV)
     mu_in    = np.atleast_1d(mu_in)
     if paired:
@@ -55,6 +50,7 @@ def tabulated_sigma_diff(E_in_MeV, mu_in, reac, paired=False):
         if len(mu_in > 1):
             unsorted = np.argsort(np.argsort(mu_in))
             res = res[..., unsorted]
+            res = res.T
     return np.squeeze(res)
 
 
@@ -65,12 +61,13 @@ def legendre_sigma_diff(E_in_MeV, mu_in, reac, paired=False):
     E_in_MeV = np.atleast_1d(E_in_MeV)
     mu_in    = np.atleast_1d(mu_in)
 
-    if reac == 'D(T,n)He4':
-        cs = cs_tab.DT
-    elif reac == 'D(D,n)3He':
-        cs = cs_tab.DDn3He
-    n_leg = cs.leg_coeff.shape[1]
-    data = interp1d(cs.En, cs.leg_coeff, axis=0)
+    f_json = 'crossSections/%s.json' %reac
+    with open(f_json, 'r') as fjson:
+        cs = json.load(fjson)
+
+    cs['LegCoeff'] = np.array(cs['LegCoeff'])
+    n_leg = cs['LegCoeff'].shape[1]
+    data = interp1d(cs['En'], cs['LegCoeff'], axis=0)
     data_E = data(E_in_MeV)
     cs_leg = np.zeros((len(mu_in), n_leg))
     for jleg in range(n_leg):
@@ -85,29 +82,32 @@ def legendre_sigma_diff(E_in_MeV, mu_in, reac, paired=False):
     return np.squeeze(leg_tot*cs_sum/(4*np.pi*data_E[:, 0]))
 
 
+def Poly5(E_keV, poly5):
+    return poly5[0] + E_keV*(poly5[1] + E_keV*(poly5[2] + E_keV*(poly5[3] + E_keV*poly5[4])))
+
+
 def legendre_sigma_tot(E_in_MeV, reac, Emin_MeV=5.e-4):
 
-    if reac == 'D(T,n)He4':
-        cs = cs_tab.DT
-    elif reac == 'D(D,n)3He':
-        cs = cs_tab.DDn3He
+    f_json = 'crossSections/%s.json' %reac
+    with open(f_json, 'r') as fjson:
+        cs = json.load(fjson)
 
     E_in_MeV = np.atleast_1d(E_in_MeV)
     E_keV = 1e3*E_in_MeV
     leg_out = np.zeros_like(E_in_MeV)
 
-    (ind_bosch1, ) = np.where((E_in_MeV >= Emin_MeV) & (E_in_MeV < cs.BoschLiskBound) & (E_in_MeV <= cs.loHiBound))
-    (ind_bosch2, ) = np.where((E_in_MeV >= Emin_MeV) & (E_in_MeV < cs.BoschLiskBound) & (E_in_MeV > cs.loHiBound))
-    (ind_interp, ) = np.where((E_in_MeV >= Emin_MeV) & (E_in_MeV >= cs.BoschLiskBound))
-    leg_out[ind_interp] = np.interp(E_in_MeV[ind_interp], cs.Etot_MeV, cs.y)
+    (ind_bosch1, ) = np.where((E_in_MeV >= Emin_MeV) & (E_in_MeV < cs['BoschLiskBound']) & (E_in_MeV <= cs['loHiBound']))
+    (ind_bosch2, ) = np.where((E_in_MeV >= Emin_MeV) & (E_in_MeV < cs['BoschLiskBound']) & (E_in_MeV > cs['loHiBound']))
+    (ind_interp, ) = np.where((E_in_MeV >= Emin_MeV) & (E_in_MeV >= cs['BoschLiskBound']))
+    leg_out[ind_interp] = np.interp(E_in_MeV[ind_interp], cs['Etot_MeV'], cs['y'])
 
-    num_a =  cs.A[0] + E_keV*(cs.A[1] + E_keV*(cs.A[2] + E_keV*(cs.A[3] + E_keV*cs.A[4])))
-    den1_a =       1. + E_keV*(cs.B[0] + E_keV*(cs.B[1] + E_keV*(cs.B[2] + E_keV*cs.B[3])))
-    num_ahi = cs.Ahi[0] + E_keV*(cs.Ahi[1] + E_keV*(cs.Ahi[2] + E_keV*(cs.Ahi[3] + E_keV*cs.Ahi[4])))
-    den1_ahi =         1. + E_keV*(cs.Bhi[0] + E_keV*(cs.Bhi[1] + E_keV*(cs.Bhi[2] + E_keV*cs.Bhi[3])))
-    den2 = E_keV * np.exp(cs.Bg/np.sqrt(E_keV))
+    num_a    = Poly5(E_keV, cs['A'])
+    den1_a   = Poly5(E_keV, cs['B'])
+    num_ahi  = Poly5(E_keV, cs['Ahi'])
+    den1_ahi = Poly5(E_keV, cs['Bhi'])
+    den2 = E_keV * np.exp(cs['Bg']/np.sqrt(E_keV))
 
-    leg_out[ind_bosch1] = num_a[  ind_bosch1]/(den1_a[  ind_bosch1]*den2[ind_bosch1])
+    leg_out[ind_bosch1] = num_a  [ind_bosch1]/(den1_a  [ind_bosch1]*den2[ind_bosch1])
     leg_out[ind_bosch2] = num_ahi[ind_bosch2]/(den1_ahi[ind_bosch2]*den2[ind_bosch2])
     
     return np.squeeze(leg_out)
@@ -119,7 +119,7 @@ if __name__ == '__main__':
 
 # Total - correct, page 9 of ControlRoom manual!
     E = 0.5
-    dttot = legendre_sigma_tot(E, reac='D(T,n)He4')
+    dttot = legendre_sigma_tot(E, reac='D(T,n)4He')
     print('DT tot cross-section for E=%8.4f MeV:' %E)
     print('%12.4e millibarn' %dttot)
 
@@ -127,7 +127,7 @@ if __name__ == '__main__':
     E = 1
     mu = -1
     print('DT cross-section for E=%8.4f MeV, mu=%6.3f:' %(E, mu))
-    dt_diff = sigma_diff(E, mu, reac='D(T,n)He4')
+    dt_diff = sigma_diff(E, mu, reac='D(T,n)4He')
     print('%12.4e millibarn' %dt_diff)
 
 # Differential tab-sigma_diff, DP:
