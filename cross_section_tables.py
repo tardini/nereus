@@ -1,6 +1,4 @@
 import numpy as np
-from scipy.interpolate import interp1d
-from constants import epsilon0, echarge
 
 
 class DP:

@@ -50,6 +50,9 @@ class plotWindow(QWidget):
         new_toolbar = NavigationToolbar(new_canvas, new_tab)
         layout.addWidget(new_canvas)
         layout.addWidget(new_toolbar)
+        for jtab in range(self.tabs.count()):
+            if self.tabs.tabText(jtab) == title:
+                self.tabs.removeTab(jtab)
         self.tabs.addTab(new_tab, title)
 
 
@@ -118,3 +121,41 @@ def fig_spec(Egrid, Espec, color='#d0d0d0'):
     plt.ylabel('dN/dEn')
 
     return fig_spc
+
+
+def fig_los(cell):
+    
+    R_m = np.hypot(cell.x, cell.y)
+
+    fig_los = plt.figure(1, figsize=fig_size)
+    fig_los.subplots_adjust(left=0.05, bottom=0.1, right=0.95, top=0.98, wspace=0.2)
+
+    ax1 = plt.subplot(1, 2, 1, aspect='equal')
+    ax1.set_xlim([0.5, 3.5])
+    ax1.set_ylim([-1.5, 1.5])
+    ax1.set_xlabel('R [m]', labelpad=2)
+    ax1.set_ylabel('z [m]', labelpad=2)
+    ax1.plot(R_m, cell.z, 'ro') 
+
+    ax2 = plt.subplot(1, 2, 2, aspect='equal')
+    ax2.set_xlim([-3, 3])
+
+# Plot AUG wall
+    try:
+        import aug_sfutils as sf
+    except:
+        logger.error('Missing vessel contour data')
+    if 'sf' in locals():
+        gc_d  = sf.getgc()
+        tor_d = sf.getgc_tor() 
+        for gc in gc_d.values():
+            ax1.plot(gc.r, gc.z, 'b-')
+        for tor in tor_d.values():
+            ax2.plot(tor.x, tor.y, 'b-')
+
+    ax2.plot(cell.x, cell.y, 'ro')
+    ax2.set_xlabel('x [m]', labelpad=2)
+    ax2.set_ylabel('y [m]', labelpad=2)
+    ax2.tick_params(which='major', length=4, width=0.5)
+
+    return fig_los
