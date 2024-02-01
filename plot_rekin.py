@@ -54,6 +54,7 @@ class plotWindow(QWidget):
             if self.tabs.tabText(jtab) == title:
                 self.tabs.removeTab(jtab)
         self.tabs.addTab(new_tab, title)
+        self.tabs.setCurrentIndex(self.tabs.count()-1)
 
 
 def fig_reactivity(reac_d, Ti_keV, color='#d0d0d0'):
