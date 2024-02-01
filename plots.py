@@ -37,7 +37,7 @@ class plotWindow(QWidget):
         self.setGeometry(QRect(80, 30, 900, 680))
         self.tabs = QTabWidget(self)
         self.tabs.setStyleSheet("QTabBar::tab { width: 165 }")
-        self.setWindowTitle('Reaction kinematics')
+        self.setWindowTitle('Nuclear reactions properties')
 
 
     def addPlot(self, title, figure):

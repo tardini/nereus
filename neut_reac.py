@@ -24,7 +24,7 @@ import calc_cross_section as cs
 import calc_kinematics as ck
 import calc_spectrum as spc
 import calc_los
-import plot_rekin
+import plots
 from reactions import reaction
 
 os.environ['BROWSER'] = '/usr/bin/firefox'
@@ -32,11 +32,11 @@ os.environ['BROWSER'] = '/usr/bin/firefox'
 fmt = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s: %(message)s', '%H:%M:%S')
 hnd = logging.StreamHandler()
 hnd.setFormatter(fmt)
-logger = logging.getLogger('rekin')
+logger = logging.getLogger('neutReac')
 logger.addHandler(hnd)
 logger.setLevel(logging.DEBUG)
 
-rekin_dir = os.path.dirname(os.path.realpath(__file__))
+neutReacDir = os.path.dirname(os.path.realpath(__file__))
 
 
 class REAC_GUI(QMainWindow):
@@ -124,8 +124,8 @@ class REAC_GUI(QMainWindow):
         saveAction  = QAction('&Save Setup', jsonMenu)
         jsonMenu.addAction(loadAction)
         jsonMenu.addAction(saveAction)
-        loadAction.triggered.connect(self.load_json)
-        saveAction.triggered.connect(self.save_json)
+        loadAction.triggered.connect(self.loadJSON)
+        saveAction.triggered.connect(self.saveJSON)
 
         aboutAction = QAction('&Web docu', helpMenu)
         aboutAction.triggered.connect(self.about)
@@ -141,11 +141,11 @@ class REAC_GUI(QMainWindow):
             but = QPushButton()
             but.setGeometry(xpos, xicon, ypos, yicon)
             but.setStyleSheet("min-height: %dpx; padding: 0.0em 0.0em 0.0em 0.0em" %yicon)
-            fgif = '%s/%s.gif' %(rekin_dir, key)
+            fgif = '%s/%s.gif' %(neutReacDir, key)
             if os.path.isfile(fgif):
                 but.setIcon(QIcon(fgif))
             else:
-                fpng = '%s/%s.png' %(rekin_dir, key)
+                fpng = '%s/%s.png' %(neutReacDir, key)
                 but.setIcon(QIcon(fpng))
             but.setIconSize(QSize(ybar, ybar))
             but.clicked.connect(fmap[key])
@@ -156,7 +156,7 @@ class REAC_GUI(QMainWindow):
 
 # User options
 
-        f_json = '%s/settings/default.json' %rekin_dir
+        f_json = '%s/settings/default.json' %neutReacDir
         with open(f_json, 'r') as fjson:
             self.setup_init = json.load(fjson)
         self.gui = {}
@@ -213,13 +213,13 @@ class REAC_GUI(QMainWindow):
         self.setStyleSheet("QLabel { width: 4 }")
         self.setStyleSheet("QLineEdit { width: 4 }")
         self.setGeometry(10, 10, xwin, ywin)
-        self.setWindowTitle('ReKin')
+        self.setWindowTitle('NeutReac')
         self.show()
 
 
     def about(self):
 
-        webbrowser.open('https://www.aug.ipp.mpg.de/~git/rekin/index.html')
+        webbrowser.open('https://github.com/tardini/neut_reac/wiki')
 
 
     def fill_layout(self, layout, node, entries=[], checkbuts=[], combos={}, lbl_wid=140, ent_wid=180, col_shift=0):
@@ -317,10 +317,10 @@ class REAC_GUI(QMainWindow):
                             break
 
 
-    def load_json(self):
+    def loadJSON(self):
 
         ftmp = QFileDialog.getOpenFileName(self, 'Open file', \
-            '%s/settings' %rekin_dir, "json files (*.json)")
+            '%s/settings' %neutReacDir, "json files (*.json)")
         if qt5:
             f_json = ftmp[0]
         else:
@@ -331,11 +331,11 @@ class REAC_GUI(QMainWindow):
         self.set_gui(setup_d)
 
 
-    def save_json(self):
+    def saveJSON(self):
 
         out_dic = self.gui2json()
         ftmp = QFileDialog.getSaveFileName(self, 'Save file', \
-            '%s/settings' %rekin_dir, "json files (*.json)")
+            '%s/settings' %neutReacDir, "json files (*.json)")
         if qt5:
             f_json = ftmp[0]
         else:
@@ -359,8 +359,8 @@ class REAC_GUI(QMainWindow):
                 reac_d[key] = react(Ti_keV, key)
 
         if not hasattr(self, 'wid'):
-            self.wid = plot_rekin.plotWindow()
-        fig_reac =  plot_rekin.fig_reactivity(reac_d, Ti_keV)
+            self.wid = plots.plotWindow()
+        fig_reac =  plots.fig_reactivity(reac_d, Ti_keV)
         self.wid.addPlot('Reactivities', fig_reac)
         self.wid.show()
 
@@ -378,8 +378,8 @@ class REAC_GUI(QMainWindow):
         sigma = cs.sigma_diff(Egrid, mu_grid, reac_lbl, 2, 2)
 
         if not hasattr(self, 'wid'):
-            self.wid = plot_rekin.plotWindow()
-        fig_cross = plot_rekin.fig_cross(sigma, theta, Egrid, log_scale=cross_dic['log_scale'])
+            self.wid = plots.plotWindow()
+        fig_cross = plots.fig_cross(sigma, theta, Egrid, log_scale=cross_dic['log_scale'])
         self.wid.addPlot('Cross-sections', fig_cross)
         self.wid.show()
 
@@ -398,33 +398,33 @@ class REAC_GUI(QMainWindow):
         kin = ck.calc_reac(v1, v2, versor_out, reac_lbl)
 
         if not hasattr(self, 'wid'):
-            self.wid = plot_rekin.plotWindow()
+            self.wid = plots.plotWindow()
         fig_kine = plt.figure('Kinematics', (8.8, 5.9), dpi=100)
         self.wid.addPlot('Scattering kinematics', fig_kine)
 # Need to define axes after canvas creation, in order to rotate the figure interactively
-        plot_rekin.ax_scatt(fig_kine, kin)
+        plots.ax_scatt(fig_kine, kin)
         self.wid.show()
 
 
     def spectra(self):
 
-        rekin_dic = self.get_gui_tab('spectrum')
+        neutReac_dic = self.get_gui_tab('spectrum')
 
         logger.info('Spectra')
-        dens = rekin_dic['dens']
-        reac_lbl = rekin_dic['reac']
-        n_sample = rekin_dic['n_sample']
-        E1 = rekin_dic['E1']
-        E2 = rekin_dic['E2']
-        losx = rekin_dic['losx']
-        losy = rekin_dic['losy']
-        losz = rekin_dic['losz']
+        dens = neutReac_dic['dens']
+        reac_lbl = neutReac_dic['reac']
+        n_sample = neutReac_dic['n_sample']
+        E1 = neutReac_dic['E1']
+        E2 = neutReac_dic['E2']
+        losx = neutReac_dic['losx']
+        losy = neutReac_dic['losy']
+        losz = neutReac_dic['losz']
         Earr, weight = spc.mono_iso(E1, E2, [losx, losy, losz], reac_lbl, n_sample=n_sample)
         Egrid, Espec = spc.calc_spectrum(dens, Earr, weight)
 
         if not hasattr(self, 'wid'):
-            self.wid = plot_rekin.plotWindow()
-        fig_spec = plot_rekin.fig_spec(Egrid, Espec)
+            self.wid = plots.plotWindow()
+        fig_spec = plots.fig_spec(Egrid, Espec)
         self.wid.addPlot('Neutron Spectrum', fig_spec)
         self.wid.show()
 
@@ -438,8 +438,8 @@ class REAC_GUI(QMainWindow):
 
 # Plot
         if not hasattr(self, 'wid'):
-            self.wid = plot_rekin.plotWindow()
-        fig_los = plot_rekin.fig_los(dlos.cell)
+            self.wid = plots.plotWindow()
+        fig_los = plots.fig_los(dlos.cell)
         self.wid.addPlot('Detector LoS', fig_los)
         self.wid.show()
 
