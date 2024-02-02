@@ -23,7 +23,7 @@ from reactivities import *
 import calc_cross_section as cs
 import calc_kinematics as ck
 import calc_spectrum as spc
-import calc_los
+import los
 import plots
 from reactions import reaction
 
@@ -434,12 +434,12 @@ class REAC_GUI(QMainWindow):
         logger.info('Starting LOS cone calculation')
         geo = self.get_gui_tab('detector')
 
-        dlos = calc_los.DETECTOR_LOS(geo)
+        dlos = los.DETECTOR_LOS(geo)
 
 # Plot
         if not hasattr(self, 'wid'):
             self.wid = plots.plotWindow()
-        fig_los = plots.fig_los(dlos.cell)
+        fig_los = dlos.plotLOS()
         self.wid.addPlot('Detector LoS', fig_los)
         self.wid.show()
 

@@ -194,12 +194,12 @@ x             y             z             Omega         Vol
         logger.info('Written output file %s' %los_file)
 
 
-    def plotLOS(self):
+    def plotLOS(self, show=False, figsize=(8.8, 5.9)):
 
         R_m = np.hypot(self.cell.x, self.cell.y)
 
-        f = plt.figure(1, figsize=(13, 5.5))
-        f.subplots_adjust(left=0.05, bottom=0.1, right=0.95, top=0.98, wspace=0.2)
+        fig = plt.figure(1, figsize=figsize)
+        fig.subplots_adjust(left=0.05, bottom=0.1, right=0.95, top=0.98, wspace=0.2)
 
         ax1 = plt.subplot(1, 2, 1, aspect='equal')
         ax1.set_xlim([0.5, 3.5])
@@ -229,5 +229,8 @@ x             y             z             Omega         Vol
         ax2.set_ylabel('y [m]', labelpad=2)
         ax2.tick_params(which='major', length=4, width=0.5)
 
-        plt.show()
+        if show:
+            plt.show()
+        else:
+            return fig
         
