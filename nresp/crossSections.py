@@ -26,6 +26,7 @@ class crossSections:
         f_json = '%s/crossSections.json' %crossDir
         with open(f_json, 'r') as fjson:
             crSec = json.load(fjson)
+        self.reactions = crSec['reactions']
         self.EgridTot  = crSec['EgridTot']
         f_json = '%s/alphas3.json' %crossDir
         with open(f_json, 'r') as fjson:
@@ -58,7 +59,7 @@ class crossSections:
                             theta_grid = np.linspace(0, 1, n_theta, endpoint=True)
                         csDiff_d[reac] = np.vstack((np.zeros(nE), crSecArray, np.pi + np.zeros(nE))).T
 
-        self.reacTotUse = self.reacTot[:12] # exclude CarTot, AlTot, HE1, HE2
+        self.reacTotUse = self.reacTot[:10] # exclude CarTot, AlTot, HE1, HE2
 
         self.csd_d = {}
         for reac in self.reacDiff:
