@@ -246,7 +246,7 @@ as intersection point'''
 
 
 def geom(D, RG, DSZ, RSZ, DL, RL, X0, CX):
-    '''Calculating the flight path's crossing points through the three cylunders
+    '''Calculating the flight path's crossing points through the three cylinders
 MediaSequence    material id:  1 scintillator, 2 light pipe, 3 Al, 4 vacuum (MAT-1)
 CrossPathLen     path length to a crossing point(WEG)'''
 
@@ -297,7 +297,7 @@ CrossPathLen     path length to a crossing point(WEG)'''
                     if W5 > W4:
                         IndexPath = [4, 5, 2, 3]
                     else:
-                        IndexPath = [4, 4, 3]
+                        IndexPath = [4, 4, 3] # ?
                 else:
                     if W5 == W4:
                         IndexPath = [2, 3, 5]
@@ -400,14 +400,11 @@ def En2light(E_phsdim):
     tim = np.zeros(7)
     time_slow = np.zeros(len(tim) - 1)
 
-    CrossPathLen = np.zeros(6, dtype=flt_typ)
-    GWT_EXP      = np.zeros(6, dtype=flt_typ)
+    GWT_EXP = np.zeros(6, dtype=flt_typ)
     SIGM = np.zeros(4, dtype=flt_typ)
     X00  = np.zeros(3, dtype=flt_typ)
     X0   = np.zeros_like(X00)
-    X    = np.zeros_like(X00)
     CX   = np.zeros_like(X00)
-    FAC  = np.zeros_like(X00)
 
 # Derived quantities
 
@@ -415,9 +412,9 @@ def En2light(E_phsdim):
     rg_sq  = detector['RG' ]**2
     detector['D']  = detector['DG'] + detector['DL']
     detector['RL'] = detector['RSZ']
-    XNC  = detector['dens_sc']*6.023*931.44/(detector['alpha_sc']*massMeV['H'] + massMeV['C12'])
+    XNC  = detector['dens_sc']*6.023*massMeV['amu']/(detector['alpha_sc']*massMeV['H'] + massMeV['C12'])
     XNH  = detector['alpha_sc']*XNC
-    XNCL = detector['dens_lg']*6.023*931.44/(detector['alpha_lg']*massMeV['H'] + massMeV['C12'])
+    XNCL = detector['dens_lg']*6.023*massMeV['amu']/(detector['alpha_lg']*massMeV['H'] + massMeV['C12'])
     XNHL = detector['alpha_lg']*XNCL
     XNAL = 0.60316
 
@@ -637,16 +634,13 @@ def En2light(E_phsdim):
 
                 if reac_type == 'H(N,N)H':
                     CTCM = 2.*Frnd - 1.
-
-                    if ENE > 2.:
-# Angular distribution
+                    if ENE > 2.:   # Angular distribution
                         AAA = CS.cstInterp['HE1'](ENE)
                         BBB = CS.cstInterp['HE2'](ENE)
                         CTCM1 = (CTCM + AAA)/(1. - BBB + AAA*CTCM  + BBB*CTCM **2)
                         CTCM  = (CTCM + AAA)/(1. - BBB + AAA*CTCM1 + BBB*CTCM1**2)
                     dEnucl = CS.crSec_d[reac_type]['dEnucl']
                     ctheta, cthetar, ENR, ENE = dkinma(massMeV['neutron'], massMeV['H'], massMeV['neutron'], dEnucl, CTCM, ENE)
-
                     LightYieldSingle = 0.
 
                     if zr_dl >= 0.:
