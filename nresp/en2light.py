@@ -345,31 +345,33 @@ CrossPathLen(6)   path length to a crossing point(WEG)'''
 # Checked so far   
             elif N3 == 2:
                 if W3 > W5:
-                    CrossPathLen[0] = W5
-                    MediaSequence[0] = 3
-                    CrossPathLen[1] = W6
-                    MediaSequence[1] = 2
                     if W5 > W4:
-                        CrossPathLen[2] = W3
-                        MediaSequence[2] = 3
-                        n_cross_cyl = 5
+                        if W2 <= W4:
+                            CrossPathLen[:4] = W5, W6, W3, W4
+                            MediaSequence[:4] = 3, 2, 3, 1
+                            n_cross_cyl = 4
+                        else:
+                            CrossPathLen[:5] = W5, W6, W3, W4, W2
+                            MediaSequence[:5] = 3, 2, 3, 1, 3
+                            n_cross_cyl = 5
                     else:
+                        CrossPathLen[:4] = W5, W6, W4, W2
+                        MediaSequence[:4] = 3, 2, 1, 3
                         n_cross_cyl = 4
-                    CrossPathLen[n_cross_cyl-2] = W4
-                    MediaSequence[n_cross_cyl-2] = 1
                 else:
-                    CrossPathLen[0] = W3
-                    MediaSequence[0] = 3
-                    CrossPathLen[1] = W4
-                    MediaSequence[1] = 1
                     if W5 == W4:
+                        CrossPathLen[:4] = W3, W4, W6, W2
+                        MediaSequence[:4] = 3, 1, 2, 3
                         n_cross_cyl = 4
                     else:
-                        CrossPathLen[2] = W5
-                        MediaSequence[2] = 3
-                        n_cross_cyl = 5
-                    CrossPathLen[n_cross_cyl-2] = W6
-                    MediaSequence[n_cross_cyl-2] = 2
+                        if W2 <= W6:
+                            CrossPathLen[:4] = W3, W4, W5, W6
+                            MediaSequence[:4] = 3, 1, 3, 2
+                            n_cross_cyl = 4
+                        else:
+                            CrossPathLen[:5] = W3, W4, W5, W6, W2
+                            MediaSequence[:5] = 3, 1, 3, 2, 3
+                            n_cross_cyl = 5
 
     else:    #(N1 == 2) Source point outside detector
         CrossPathLen[0] = W1
