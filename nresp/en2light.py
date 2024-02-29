@@ -88,10 +88,10 @@ def reactionHC(MediumID, En_in, SH, SC, rnd):
         ALPHA = detector['alpha_lg'] #XNHL/XNCL
     ZUU = rnd*(ALPHA*SH + SC) - ALPHA*SH
     if ZUU < 0.:
-        return 0
+        return 'H(N,N)H'
     if En_in < CS.EgridTot[0]:
-        return 1
-    return CS.reactions.index(reactionType(ZUU, 1, 7, En_in))
+        return '12C(N,N)12C'
+    return reactionType(ZUU, 1, 7, En_in)
 
 
 def photo_out(materialID, En_in, zr_dl):
@@ -677,14 +677,16 @@ def En2light(E_phsdim):
                 reac_type = 8
                 while reac_type == 8:
                     tre1 = time.time()
-                    reac_type = reactionHC(MediumID, ENE, SH, SC, rand[jrand])
+                    reac_type = CS.reactions.index(reactionHC(MediumID, ENE, SH, SC, rand[jrand]))
                     tre2 = time.time()
                     time_reac1 += tre2 - tre1
                     jrand += 1
-                    if n_scat == 1: # Label first neutron reaction
+
+                if n_scat == 1: # Label first neutron reaction
+                    if MediumID == 1:
                         first_reac_type = reac_type
-                        if MediumID == 2:
-                            first_reac_type = 8 # Any reaction in light guide
+                    elif MediumID == 2:
+                        first_reac_type = 8 # Any reaction in light guide
 
 #-----------
 # Kinematics 
