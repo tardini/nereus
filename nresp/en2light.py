@@ -21,7 +21,6 @@ PI2 = 2.*np.pi
 
 CS = crossSections.crossSections()
 
-print('All', CS.reactions)
 print('Use', CS.reacTotUse)
 
 flt_typ = settings.flt_typ
@@ -72,11 +71,11 @@ def reactionType(ZUU, type_min, type_max, En_in):
     '''Throwing dices for the reaction occurring in a given material'''
 
     reac_type = type_min
-    for reac in CS.reactions[type_min: type_max+1]:
+    for reac in CS.reacTotUse[type_min: type_max+1]:
         ZUU -= CS.cstInterp[reac](En_in)
         if ZUU < 0.:
             return reac
-    return CS.reactions[type_max+1]
+    return None
 
 
 def reactionHC(MediumID, En_in, SH, SC, rnd):
@@ -674,18 +673,17 @@ def En2light(E_phsdim):
 # Random reaction type
 #---------------------
 
-                reac_type = '27AL(N,N)27AL'
-                while reac_type == '27AL(N,N)27AL':
+                reac_type = None
+                while reac_type is None:
                     tre1 = time.time()
                     reac_type = reactionHC(MediumID, ENE, SH, SC, rand[jrand])
-#                    jreac = CS.reactions.index(reac_type)
                     tre2 = time.time()
                     time_reac1 += tre2 - tre1
                     jrand += 1
 
                 if n_scat == 1: # Label first neutron reaction
                     if MediumID == 1:
-                        first_reac_type = CS.reactions.index(reac_type)
+                        first_reac_type = CS.reacTotUse.index(reac_type)
                     elif MediumID == 2:
                         first_reac_type = 8 # Any reaction in light guide
 
@@ -858,14 +856,15 @@ def En2light(E_phsdim):
 # Reaction in aluminium cage
             elif MediumID == 3:
                 tre3 = time.time()
-
                 ZUU = rand[jrand]*SAL
                 jrand += 1
                 reac_type = reactionType(ZUU, 8, 9, ENE)
                 tre4 = time.time()
                 time_reac2 += tre4 - tre3
+                if reac_type is None:
+                    break #reac_chain
                 if n_scat <= 1:
-                    first_reac_type = CS.reactions.index(reac_type)
+                    first_reac_type = CS.reacTotUse.index(reac_type)
 
                 if reac_type == '27AL(N,N)27AL':
                     CTCM = CS.cosInterpReac2d(reac_type, ENE, Frnd)
@@ -874,8 +873,6 @@ def En2light(E_phsdim):
                     CTCM = 2.*Frnd - 1.
                     dEnucl = -rand[jrand]*(ENE - 0.5) - 0.5
                     jrand += 1
-                elif reac_type == '27AL(N,X)-absorption':
-                    break #reac_chain
                 ctheta, cthetar, ENR, ENE = dkinma(massMeV['neutron'], massMeV['Al'], massMeV['neutron'], dEnucl, CTCM, ENE)
 
             if ENE <= .01:
@@ -886,10 +883,7 @@ def En2light(E_phsdim):
 
 # End reaction chain
 
-        if weight < 2E-5 or n_scat == 0:
-            continue # cycle MC loop
-
-        if LightYieldChain > 0.:
+        if weight >= 2E-5 and n_scat > 0 and LightYieldChain > 0.:
             phsBin = int(LightYieldChain/settings.Ebin_MeVee)
             light_output[first_reac_type, phsBin] += weight
             count_reac  [first_reac_type] += 1 # count

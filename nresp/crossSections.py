@@ -26,7 +26,6 @@ class crossSections:
         f_json = '%s/crossSections.json' %crossDir
         with open(f_json, 'r') as fjson:
             crSec = json.load(fjson)
-        self.reactions = crSec['reactions']
         self.EgridTot  = crSec['EgridTot']
         f_json = '%s/alphas3.json' %crossDir
         with open(f_json, 'r') as fjson:
