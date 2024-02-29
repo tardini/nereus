@@ -66,11 +66,11 @@ cx_out: versor of scattered particle'''
     return cx_out
 
 
-def reactionType(ZUU, type_in, En_in, reac_list):
+def reactionType(ZUU, type_min, type_max, En_in):
     '''Throwing dices for the reaction occurring in a given material'''
 
-    reac_type = type_in
-    for reac in reac_list:
+    reac_type = type_min
+    for reac in CS.reactions[type_min: type_max+1]:
         ZUU -= CS.cstInterp[reac](En_in)
         if ZUU < 0.:
             return reac_type
@@ -91,8 +91,7 @@ def reactionHC(MediumID, En_in, SH, SC, rnd):
         return 0
     if En_in < CS.EgridTot[0]:
         return 1
-    return reactionType(ZUU, 1, En_in, ["12C(N,N)12C", "12C(N,N')12C", "12C(N,A)9BE",
-                 "12C(N,A)9BE'->N+3A", "12C(N,N')3A", "12C(N,P)12B", "12C(N,D)11B"])
+    return reactionType(ZUU, 1, 7, En_in)
 
 
 def photo_out(materialID, En_in, zr_dl):
@@ -860,7 +859,7 @@ def En2light(E_phsdim):
 
                 ZUU = rand[jrand]*SAL
                 jrand += 1
-                reac_type = reactionType(ZUU, 9, ENE, ["27AL(N,N)27AL", "27AL(N,N')27AL'"])
+                reac_type = reactionType(ZUU, 9, 10, ENE)
                 tre4 = time.time()
                 time_reac2 += tre4 - tre3
                 if n_scat <= 1:
