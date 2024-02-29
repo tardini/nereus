@@ -26,7 +26,8 @@ class crossSections:
         f_json = '%s/crossSections.json' %crossDir
         with open(f_json, 'r') as fjson:
             crSec = json.load(fjson)
-        self.EgridTot = crSec['EgridTot']
+        self.reactions = crSec['reactions'] 
+        self.EgridTot  = crSec['EgridTot']
         f_json = '%s/alphas3.json' %crossDir
         with open(f_json, 'r') as fjson:
             self.alphas3 = json.load(fjson)
@@ -39,7 +40,7 @@ class crossSections:
         csDiff_d = {}
         self.reacTot  = []
         self.reacDiff = []
-        for reac in crSec['reactions']:
+        for reac in self.reactions:
             f_json = '%s/%s.json' %(crossDir, reac)
             if os.path.isfile(f_json):
                 with open(f_json, 'r') as fjson:

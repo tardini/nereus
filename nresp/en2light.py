@@ -20,6 +20,8 @@ count_cyl  = 0
 PI2 = 2.*np.pi
 
 CS = crossSections.crossSections()
+print(CS.reactions)
+
 flt_typ = settings.flt_typ
 int_typ = settings.int_typ
 

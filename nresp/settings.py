@@ -16,7 +16,7 @@ f_poly     = '%s/inc/poly_yield.json'    %nrespDir
 
 # Run settings
 
-nmc = 3e5
+nmc = 1e5
 distr = 'gauss'
 En_wid_frac = .01
 Ebin_MeVee = .005
