@@ -674,17 +674,18 @@ def En2light(E_phsdim):
 # Random reaction type
 #---------------------
 
-                reac_type = 8
-                while reac_type == 8:
+                reac_type = '27AL(N,N)27AL'
+                while reac_type == '27AL(N,N)27AL':
                     tre1 = time.time()
-                    reac_type = CS.reactions.index(reactionHC(MediumID, ENE, SH, SC, rand[jrand]))
+                    reac_type = reactionHC(MediumID, ENE, SH, SC, rand[jrand])
+#                    jreac = CS.reactions.index(reac_type)
                     tre2 = time.time()
                     time_reac1 += tre2 - tre1
                     jrand += 1
 
                 if n_scat == 1: # Label first neutron reaction
                     if MediumID == 1:
-                        first_reac_type = reac_type
+                        first_reac_type = CS.reactions.index(reac_type)
                     elif MediumID == 2:
                         first_reac_type = 8 # Any reaction in light guide
 
@@ -692,7 +693,7 @@ def En2light(E_phsdim):
 # Kinematics 
 #-----------
 
-                if reac_type == 0: # H(N, N)H
+                if reac_type == 'H(N,N)H':
                     CTCM = 2.*Frnd - 1.
 
                     if ENE > 2.:
@@ -701,7 +702,7 @@ def En2light(E_phsdim):
                         BBB = CS.cstInterp['HE2'](ENE)
                         CTCM1 = (CTCM + AAA)/(1. - BBB + AAA*CTCM  + BBB*CTCM **2)
                         CTCM  = (CTCM + AAA)/(1. - BBB + AAA*CTCM1 + BBB*CTCM1**2)
-                    dEnucl = CS.crSec_d['H(N,N)H']['dEnucl']
+                    dEnucl = CS.crSec_d[reac_type]['dEnucl']
                     ctheta, cthetar, ENR, ENE = dkinma(massMeV['neutron'], massMeV['H'], massMeV['neutron'], dEnucl, CTCM, ENE)
 
                     LightYieldSingle = 0.
@@ -748,23 +749,22 @@ def En2light(E_phsdim):
 
                     LightYieldChain += LightYieldSingle
 
-                elif reac_type in (1, 2): # 12C(N,N)12C, 12C(N,N')12C
-                    reac = CS.reactions[reac_type]
-                    CTCM = CS.cosInterpReac2d(reac, ENE, Frnd) # elastic
-                    dEnucl = CS.crSec_d[reac]['dEnucl']
+                elif reac_type in ('12C(N,N)12C', "12C(N,N')12C"):
+                    CTCM = CS.cosInterpReac2d(reac_type, ENE, Frnd) # elastic
+                    dEnucl = CS.crSec_d[reac_type]['dEnucl']
                     ctheta, cthetar, ENR, ENE = dkinma(massMeV['neutron'], massMeV['C12'], massMeV['neutron'], dEnucl, CTCM, ENE)
                     LightYieldChain += photo_out(5, ENR, zr_dl)
 
-                elif reac_type == 3:
-                    CTCM = CS.cosInterpReac2d("12C(N,A)9BE", ENE, Frnd)
-                    dEnucl = CS.crSec_d["12C(N,A)9BE"]['dEnucl']
+                elif reac_type == '12C(N,A)9BE':
+                    CTCM = CS.cosInterpReac2d(reac_type, ENE, Frnd)
+                    dEnucl = CS.crSec_d[reac_type]['dEnucl']
                     ctheta, cthetar, ENR, ENE = dkinma(massMeV['neutron'], massMeV['C12'], massMeV['He'], dEnucl, CTCM, ENE)
                     LightYieldChain += photo_out(3, ENE, zr_dl) + photo_out(4, ENR, zr_dl)
                     break # reac. chain
 
-                elif reac_type == 4:     # 12C(N, A)9Be'  -> N + 8Be -> 2 A
+                elif reac_type =="12C(N,A)9BE'->N+3A":
                     CTCM = 2.*Frnd - 1.
-                    dEnucl = CS.crSec_d["12C(N,A)9BE'->N+3A"]['dEnucl']
+                    dEnucl = CS.crSec_d[reac_type]['dEnucl']
                     ctheta, cthetar, ENR, ENE = dkinma(massMeV['neutron'], massMeV['C12'], massMeV['He'], dEnucl, CTCM, ENE)
                     CX1 = scatteringDirection(CX, ctheta, PHI)
                     EA1 = ENE
@@ -789,7 +789,7 @@ def En2light(E_phsdim):
                         LightYieldChain += photo_B8to2alpha(EA1, ENR, CX1, CXS, dEnucl, rand[jrand:jrand+2])
                         jrand += 2
 
-                elif reac_type == 5:   # C(N, N')C' -> 8Be'+ alpha -> 3 alpha
+                elif reac_type == "12C(N,N')3A":
                     LEVEL = 0
                     if ENE >= 10.:
                         NRA = rand[jrand]
@@ -841,16 +841,16 @@ def En2light(E_phsdim):
                         ctheta = cthetan
                         PHI = PHIN
 
-                elif reac_type == 6:
+                elif reac_type == '12C(N,P)12B':
                     CTCM = 2.*Frnd - 1.
-                    dEnucl = CS.crSec_d['12C(N,P)12B']['dEnucl']
+                    dEnucl = CS.crSec_d[reac_type]['dEnucl']
                     ctheta, cthetar, ENR, ENE = dkinma(massMeV['neutron'], massMeV['C12'], massMeV['H'], dEnucl, CTCM, ENE)
                     LightYieldChain += photo_out(1, ENE, zr_dl) + photo_out(5, ENR, zr_dl)
                     break # reac_chain
 
-                elif reac_type == 7:
+                elif reac_type == '12C(N,D)11B':
                     CTCM = 2.*Frnd - 1.
-                    dEnucl = CS.crSec_d['12C(N,D)11B']['dEnucl']
+                    dEnucl = CS.crSec_d[reac_type]['dEnucl']
                     ctheta, cthetar, ENR, ENE = dkinma(massMeV['neutron'], massMeV['C12'], massMeV['D'], dEnucl, CTCM, ENE)
                     LightYieldChain += photo_out(2, ENE, zr_dl) + photo_out(5, ENR, zr_dl)
                     break # reac_chain
@@ -861,20 +861,20 @@ def En2light(E_phsdim):
 
                 ZUU = rand[jrand]*SAL
                 jrand += 1
-                reac_type = CS.reactions.index(reactionType(ZUU, 8, 9, ENE))
+                reac_type = reactionType(ZUU, 8, 9, ENE)
                 tre4 = time.time()
                 time_reac2 += tre4 - tre3
                 if n_scat <= 1:
-                    first_reac_type = reac_type
+                    first_reac_type = CS.reactions.index(reac_type)
 
-                if reac_type == 8:
-                    CTCM = CS.cosInterpReac2d('27AL(N,N)27AL', ENE, Frnd)
-                    dEnucl = CS.crSec_d['27AL(N,N)27AL']['dEnucl']
-                elif reac_type == 9: # 27Al(N, N')27Al
+                if reac_type == '27AL(N,N)27AL':
+                    CTCM = CS.cosInterpReac2d(reac_type, ENE, Frnd)
+                    dEnucl = CS.crSec_d[reac_type]['dEnucl']
+                elif reac_type == "27Al(N, N')27Al":
                     CTCM = 2.*Frnd - 1.
                     dEnucl = -rand[jrand]*(ENE - 0.5) - 0.5
                     jrand += 1
-                elif reac_type == 10: # 27AL(N,X) absorption or exiting material
+                elif reac_type == '27AL(N,X)-absorption':
                     break #reac_chain
                 ctheta, cthetar, ENR, ENE = dkinma(massMeV['neutron'], massMeV['Al'], massMeV['neutron'], dEnucl, CTCM, ENE)
 
