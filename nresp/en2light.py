@@ -59,7 +59,7 @@ cx_out: versor of scattered particle'''
     else:
         cx_out = cx_in*X3[2]
         S1 = np.sqrt(1. - cx_in[2]**2)
-        cx_s = cx_in/S1
+        cx_s = cx_in[:2]/S1
         cx_out[0] +=  cx_s[1]*X3[0] + cx_s[0]*cx_in[2]*X3[1]
         cx_out[1] += -cx_s[0]*X3[0] + cx_s[1]*cx_in[2]*X3[1]
         cx_out[2] += -S1*X3[1]
@@ -81,14 +81,12 @@ def reactionHC(MediumID, En_in, SH, SC, rnd):
     '''Throwing dices for the reaction in a C+H material'''
 
     if MediumID == 1:
-        ALPHA = detector['alpha_sc'] #XNH/XNC
+        alpha_sh = detector['alpha_sc']*SH #XNH/XNC
     else:
-        ALPHA = detector['alpha_lg'] #XNHL/XNCL
-    ZUU = rnd*(ALPHA*SH + SC) - ALPHA*SH
+        alpha_sh = detector['alpha_lg']*SH #XNHL/XNCL
+    ZUU = rnd*(alpha_sh + SC) - alpha_sh
     if ZUU < 0.:
         return 'H(N,N)H'
-    if En_in < CS.EgridTot[0]:
-        return '12C(N,N)12C'
     return reactionType(ZUU, En_in, ["12C(N,N)12C", "12C(N,N')12C", "12C(N,A)9BE",
         "12C(N,A)9BE'->N+3A", "12C(N,N')3A", "12C(N,P)12B", "12C(N,D)11B"])
 
@@ -229,13 +227,13 @@ as intersection point'''
                 return N, W1, W2
             N = 2
             if Z1 > H0 and Z1 < H1:
-                if Z2 < H0: Z2 = H0
-                if Z2 > H1: Z2 = H1
+                Z2 = max(Z2, H0)
+                Z2 = min(H1, Z2)
                 W1 = W10
                 W2 = (Z2 - X0[2])/CX[2]
             elif Z2 > H0 and Z2 < H1:
-                if Z1 < H0: Z1 = H0
-                if Z1 > H1: Z1 = H1
+                Z1 = max(Z1, H0)
+                Z1 = min(H1, Z1)
                 W2 = W20
                 W1 = (Z1 - X0[2])/CX[2]
             else:
@@ -281,14 +279,22 @@ CrossPathLen(6)   path length to a crossing point(WEG)'''
         if N2 == 0:
             if N3 == 0:
                 n_cross_cyl = 1
+                CrossPathLen[0]  = W2
+                MediaSequence[0] = 3  
             elif N3 == 1:
                 n_cross_cyl = 2
+                CrossPathLen[0] = W6
+                CrossPathLen[1] = W2
+                MediaSequence[0] = 2
+                MediaSequence[1] = 3
             else:
-                CrossPathLen[0] = W5
-                MediaSequence[0] = 3
                 n_cross_cyl = 3
-            CrossPathLen[n_cross_cyl-2] = W6
-            MediaSequence[n_cross_cyl-2] = 2
+                CrossPathLen[0] = W5
+                CrossPathLen[1] = W6
+                CrossPathLen[2] = W2
+                MediaSequence[0] = 3
+                MediaSequence[1] = 2
+                MediaSequence[2] = 3
         elif N2 == 1:
             CrossPathLen[0] = W4
             MediaSequence[0] = 1
@@ -610,12 +616,13 @@ def En2light(E_phsdim):
                 n_cross_cyl = len(MediaSequence)
                 tim[0] = time.time()
                 if ENE != ene_old or 'SH' not in locals():
-                    SH  = np.interp(ENE, CS.crSec_d["H(N,N)H"]['EgridTot'], CS.crSec_d["H(N,N)H"]['crossTot'])  # No log, different from fortran
+                    SH  = CS.cstInterp['H(N,N)H'](ENE) # No log, different from fortran
                     SC  = CS.cstInterp['CarTot'](ENE)
                     SAL = CS.cstInterp['AlTot' ](ENE)
-                    SIGM[0] = XNH*SH  + XNC*SC
-                    SIGM[1] = XNHL*SH + XNCL*SC
-                    SIGM[2] = XNAL*SAL
+                SIGM[0] = XNH*SH  + XNC*SC
+                SIGM[1] = XNHL*SH + XNCL*SC
+                SIGM[2] = XNAL*SAL
+                        
                 tim[1] = time.time()
 
                 SIG = 1e-4*SIGM[MediaSequence-1] # "-1": python indexing; MediaSequence is an array remapping indices
@@ -627,6 +634,7 @@ def En2light(E_phsdim):
                 GWT_EXP[0] = CrossPathLen[0]*SIG[0]
                 for I in range(1, n_cross_cyl):
                     GWT_EXP[I] = GWT_EXP[I-1] + (CrossPathLen[I] - CrossPathLen[I-1])*SIG[I]
+
                 RGWT = 1. - np.exp(-GWT_EXP)
                 tim[3] = time.time()
 
@@ -657,7 +665,7 @@ def En2light(E_phsdim):
             XR = X0 + PathInMedium*CX
             zr_dl = XR[2] - detector['DL']
 
-            if weight < 2.E-5 or MediumID > 3:
+            if weight < 2.E-5 or MediumID == 4:
                 break # Reac. chain
             n_scat += 1
 
@@ -667,7 +675,7 @@ def En2light(E_phsdim):
             Frnd = rand[jrand+1]
             jrand += 2
 
-            if MediumID <= 2:
+            if MediumID in (1, 2):
 
 #---------------------
 # Random reaction type
@@ -677,9 +685,9 @@ def En2light(E_phsdim):
                 while reac_type is None:
                     tre1 = time.time()
                     reac_type = reactionHC(MediumID, ENE, SH, SC, rand[jrand])
+                    jrand += 1
                     tre2 = time.time()
                     time_reac1 += tre2 - tre1
-                    jrand += 1
 
                 if n_scat == 1: # Label first neutron reaction
                     if MediumID == 1:
