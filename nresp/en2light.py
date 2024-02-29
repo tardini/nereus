@@ -20,7 +20,6 @@ count_cyl  = 0
 PI2 = 2.*np.pi
 
 CS = crossSections.crossSections()
-print(CS.reactions)
 
 flt_typ = settings.flt_typ
 int_typ = settings.int_typ
@@ -70,7 +69,7 @@ def reactionType(ZUU, type_min, type_max, En_in):
     '''Throwing dices for the reaction occurring in a given material'''
 
     reac_type = type_min
-    for reac in CS.reactions[type_min: type_max+1]:
+    for reac in CS.reacTotUse[type_min: type_max+1]:
         ZUU -= CS.cstInterp[reac](En_in)
         if ZUU < 0.:
             return reac_type
@@ -859,7 +858,7 @@ def En2light(E_phsdim):
 
                 ZUU = rand[jrand]*SAL
                 jrand += 1
-                reac_type = reactionType(ZUU, 9, 10, ENE)
+                reac_type = reactionType(ZUU, 8, 9, ENE)
                 tre4 = time.time()
                 time_reac2 += tre4 - tre3
                 if n_scat <= 1:
