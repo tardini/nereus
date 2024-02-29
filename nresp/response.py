@@ -162,10 +162,7 @@ class RESP:
 
 
     def broaden(self, f_par='/shares/departments/AUG/users/git/tofana/output/Optimisation/neut_fit.txt'):
-
-#------
-# Broaden response function
-#------
+        '''Gaussian broadening of the response function'''
 
 # Broadening parameters
 

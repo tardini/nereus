@@ -26,9 +26,15 @@ int_typ = settings.int_typ
 Egrid, det_light = np.loadtxt(settings.f_in_light, skiprows=1, unpack=True)
 light_int = interp1d(Egrid, det_light, assume_sorted=True, fill_value='extrapolate')
 
-f_json = 'nucleiMassMeV.json'
-with open(f_json, 'r') as fjson:
+f_mass = '%s/inc/nucleiMassMeV.json' %settings.nrespDir
+with open(f_mass, 'r') as fjson:
     massMeV = json.load(fjson)
+
+with open(settings.f_detector, 'r') as fjson:
+    detector = json.load(fjson)
+
+with open(settings.f_poly, 'r') as fjson:
+    poly = json.load(fjson)
 
 
 @nb.njit
@@ -40,12 +46,7 @@ PHI     : azimutal scattering angle
 cx_in : versor of incident particle
 cx_out: versor of scattered particle'''
 
-    CT2 = ctheta**2
-    if CT2 < 1.:
-        stheta = np.sqrt(1. - CT2)
-    else:
-        stheta = 0.
-
+    stheta = np.sqrt(1. - ctheta**2)
     X3 = [stheta*np.cos(PHI), stheta*np.sin(PHI), ctheta]
 
     if cx_in[2] > 0.999999:
@@ -53,13 +54,12 @@ cx_out: versor of scattered particle'''
     elif cx_in[2] < -0.999999:
         cx_out = -np.array(X3, dtype=flt_typ)
     else:
-        cx_out = np.zeros(3, dtype=flt_typ)
+        cx_out = cx_in*X3[2]
         S1 = np.sqrt(1. - cx_in[2]**2)
         cx_s = cx_in/S1
-        cx_out[0] =  cx_s[1]*X3[0] + cx_s[0]*cx_in[2]*X3[1]
-        cx_out[1] = -cx_s[0]*X3[0] + cx_s[1]*cx_in[2]*X3[1]
-        cx_out[2] = -S1*X3[1]
-        cx_out += cx_in*X3[2]
+        cx_out[0] +=  cx_s[1]*X3[0] + cx_s[0]*cx_in[2]*X3[1]
+        cx_out[1] += -cx_s[0]*X3[0] + cx_s[1]*cx_in[2]*X3[1]
+        cx_out[2] += -S1*X3[1]
 
     return cx_out
 
@@ -81,9 +81,9 @@ def reactionHC(MediumID, En_in, SH, SC, rnd):
     '''Throwing dices for the reaction in a C+H material'''
 
     if MediumID == 1:
-        ALPHA = settings.alpha_sc #XNH/XNC
+        ALPHA = detector['alpha_sc'] #XNH/XNC
     else:
-        ALPHA = settings.alpha_lg #XNHL/XNCL
+        ALPHA = detector['alpha_lg'] #XNHL/XNCL
     ZUU = rnd*(ALPHA*SH + SC) - ALPHA*SH
     if ZUU < 0.:
         return 0
@@ -105,19 +105,19 @@ def photo_out(materialID, En_in, zr_dl):
 
     photo = 0.
     if materialID == 3: # Al
-        if En_in >= settings.ENAL1:
-            photo = settings.GLT0 + (settings.GLT1 + settings.GLT2*En_in)*En_in
+        if En_in >= poly['ENAL1']:
+            photo = poly['GLT0'] + (poly['GLT1'] + poly['GLT2']*En_in)*En_in
         else:
-            photo = settings.FLT1 * En_in**settings.FLT2
+            photo = poly['FLT1'] * En_in**poly['FLT2']
     elif materialID == 4: # Be
-        photo = settings.RLT1*En_in
+        photo = poly['RLT1']*En_in
     elif materialID == 5: # B, C
-        photo = settings.SLT1*En_in
+        photo = poly['SLT1']*En_in
     elif materialID in (1, 2): # 1:H, 2:D
         if materialID == 2:
             En_in *= 0.5
         if En_in >= Egrid[-1]:
-            photo = settings.DLT0 + settings.DLT1*En_in
+            photo = poly['DLT0'] + poly['DLT1']*En_in
         else:
             photo = light_int(En_in)
         if materialID == 2:
@@ -469,17 +469,17 @@ def En2light(E_phsdim):
 
 # Derived quantities
 
-    rsz_sq = settings.RSZ**2
-    rg_sq  = settings.RG **2
-    settings.D  = settings.DG + settings.DL
-    settings.RL = settings.RSZ
-    XNC  = settings.dens_sc*6.023*931.44/(settings.alpha_sc*massMeV['H'] + massMeV['C12'])
-    XNH  = settings.alpha_sc*XNC
-    XNCL = settings.dens_lg*6.023*931.44/(settings.alpha_lg*massMeV['H'] + massMeV['C12'])
-    XNHL = settings.alpha_lg*XNCL
+    rsz_sq = detector['RSZ']**2
+    rg_sq  = detector['RG' ]**2
+    detector['D']  = detector['DG'] + detector['DL']
+    detector['RL'] = detector['RSZ']
+    XNC  = detector['dens_sc']*6.023*931.44/(detector['alpha_sc']*massMeV['H'] + massMeV['C12'])
+    XNH  = detector['alpha_sc']*XNC
+    XNCL = detector['dens_lg']*6.023*931.44/(detector['alpha_lg']*massMeV['H'] + massMeV['C12'])
+    XNHL = detector['alpha_lg']*XNCL
     XNAL = 0.60316
 
-    the = np.radians(settings.theta)
+    the = np.radians(detector['theta'])
     cos_the = np.cos(the)
     sin_the = np.sin(the)
     if sin_the == 0.:
@@ -489,21 +489,21 @@ def En2light(E_phsdim):
 
 # Geometry
 
-    if settings.theta <= 0. :
+    if detector['theta'] <= 0. :
         CTMAX = 0.
-        distance = settings.dist - (settings.DG - settings.DSZ/2.)
+        distance = detector['dist'] - (detector['DG'] - 0.5*detector['DSZ'])
         if distance > 0.:
-            CTMAX = 1./np.sqrt(1. + (settings.RG/distance)**2)
-    elif settings.theta < 90. :
+            CTMAX = 1./np.sqrt(1. + (detector['RG']/distance)**2)
+    elif detector['theta'] < 90. :
         if sin_the < 0.999:
-            R0 = settings.RG + settings.D*sin_the/cos_the
+            R0 = detector['RG'] + detector['D']*sin_the/cos_the
     else:
-        RR  = settings.RG*np.sqrt(1. - (settings.RG/settings.dist)**2)
-        ASS = settings.RG/RR*(settings.dist - np.sqrt(rg_sq - RR**2))
+        RR  = detector['RG']*np.sqrt(1. - (detector['RG']/detector['dist'])**2)
+        ASS = detector['RG']/RR*(detector['dist'] - np.sqrt(rg_sq - RR**2))
 
-    X00[0] = settings.dist*sin_the
+    X00[0] = detector['dist']*sin_the
     X00[1] = 0.
-    X00[2] = settings.DL + settings.DSZ/2. + settings.dist*cos_the
+    X00[2] = detector['DL'] + 0.5*detector['DSZ'] + detector['dist']*cos_the
 
     logger.info('START - Eneut: %8.4f MeV', En_in_MeV)
 
@@ -533,20 +533,20 @@ def En2light(E_phsdim):
             logger.debug('Re-random flat %d %d', j_mc, nmc)
         weight = 1.
 
-        if settings.theta == 0.: # Source position at 0 deg
+        if detector['theta'] == 0.: # Source position at 0 deg
             if CTMAX > 0.9999:
-                RR0 = settings.RG*np.sqrt(rand[jrand])
+                RR0 = detector['RG']*np.sqrt(rand[jrand])
                 FI0 = PI2*rand[jrand+1]
                 jrand += 2
                 X0[0] = RR0*np.cos(FI0)
                 X0[1] = RR0*np.sin(FI0)
-                X0[2] = settings.D
+                X0[2] = detector['D']
                 CX[0] = 0.
                 CX[1] = 0.
                 CX[2] = -1.
             else:
                 X0[0] = 1e6
-                while np.abs(X0[0]) >= settings.RG:
+                while np.abs(X0[0]) >= detector['RG']:
                     CX[2] = -1. + (1. - CTMAX)*rand[jrand]
                     jrand += 1
                     if CX[2] <= -1.:
@@ -555,12 +555,12 @@ def En2light(E_phsdim):
                     X0[0] = -distance*CX[0]/CX[2]
                 CX[1] = 0.
                 X0[1] = 0.
-                X0[2] = settings.D
-        elif settings.theta == 90.: # Source position at 90 deg, versor perp to the scintillator axis
+                X0[2] = detector['D']
+        elif detector['theta'] == 90.: # Source position at 90 deg, versor perp to the scintillator axis
             X0[2] = 0.
-            while (X0[2] == settings.D or X0[2] == 0.):
+            while (X0[2] == detector['D'] or X0[2] == 0.):
                 X0[1] = RR*(2*rand[jrand] - 1.)
-                X0[2] = settings.D*rand[jrand+1]
+                X0[2] = detector['D']*rand[jrand+1]
                 jrand += 2
             X0[0] = np.sqrt(rg_sq - X0[1]**2)
             H1 = norm(X00 - X0)
@@ -569,16 +569,16 @@ def En2light(E_phsdim):
             CX[0] = -sin_the
             CX[1] = 0.
             CX[2] = -cos_the
-            X0[1] = settings.RG*(2.*rand[jrand] - 1.)
+            X0[1] = detector['RG']*(2.*rand[jrand] - 1.)
             H1 = np.sqrt(rg_sq - X0[1]**2)
-            X0[0] = -settings.RG + (R0 + settings.RG)*rand[jrand+1]
+            X0[0] = -detector['RG'] + (R0 + detector['RG'])*rand[jrand+1]
             jrand += 2
-            while (-X0[0] >= H1 or X0[0] >= H1 + R0 - settings.RG):
-                X0[0] = -settings.RG + (R0 + settings.RG)*rand[jrand]
+            while (-X0[0] >= H1 or X0[0] >= H1 + R0 - detector['RG']):
+                X0[0] = -detector['RG'] + (R0 + detector['RG'])*rand[jrand]
                 jrand += 1
-            X0[2] = settings.D
+            X0[2] = detector['D']
             if X0[0] > H1:
-                X0[2] = settings.D - (X0[0] - H1)*cotan_the
+                X0[2] = detector['D'] - (X0[0] - H1)*cotan_the
                 X0[0] = H1
 
         n_scat = 0
@@ -602,7 +602,7 @@ def En2light(E_phsdim):
 # Flight path
 # Input: D, RG, DSZ, RSZ, DL, RL, X0[2], CX[2]
             tg1 = time.time()
-            MediaSequence, CrossPathLen = geom(settings.D, settings.RG, settings.DSZ, settings.RSZ, settings.DL, settings.RL, X0, CX)
+            MediaSequence, CrossPathLen = geom(detector['D'], detector['RG'], detector['DSZ'], detector['RSZ'], detector['DL'], detector['RL'], X0, CX)
             tg2 = time.time()
             time_geom += tg2 - tg1
 
@@ -655,7 +655,7 @@ def En2light(E_phsdim):
                 time_slow += np.diff(tim)
 
             XR = X0 + PathInMedium*CX
-            zr_dl = XR[2] - settings.DL
+            zr_dl = XR[2] - detector['DL']
 
             if weight < 2.E-5 or MediumID > 3:
                 break # Reac. chain
@@ -710,14 +710,14 @@ def En2light(E_phsdim):
                             BR = 2.0457E-3*(ENR + 0.15045)**1.8194
                         LightYieldSingle = photo_out(1, ENR, zr_dl)
                         rsz_sq_xr = rsz_sq - XR[0]**2 - XR[1]**2
-                        if zr_dl <= BR or settings.DSZ - zr_dl <= BR or rsz_sq_xr <= 2.*settings.RSZ*BR:
+                        if zr_dl <= BR or detector['DSZ'] - zr_dl <= BR or rsz_sq_xr <= 2.*detector['RSZ']*BR:
                             PHIR = PHI - np.pi
                             CXR = scatteringDirection(CX, cthetar, PHIR)
 
                             if CXR[2] < 0:
                                 WMZ = -zr_dl/CXR[2]
                             elif CXR[2] > 0:
-                                WMZ = (settings.DSZ - zr_dl)/CXR[2]
+                                WMZ = (detector['DSZ'] - zr_dl)/CXR[2]
 
                             if np.abs(CXR[2]) > 0.9999:
                                 PATHM = WMZ
@@ -900,7 +900,7 @@ def En2light(E_phsdim):
 
 # Unnormalise arrays w.r.t. NMC and viewing solid angle
 
-    norm_mc_F0 = (np.pi*rg_sq*cos_the + 2.*settings.D*settings.RG*sin_the)/float(nmc)
+    norm_mc_F0 = (np.pi*rg_sq*cos_the + 2.*detector['D']*detector['RG']*sin_the)/float(nmc)
     light_output *= norm_mc_F0
     pp3as_output *= norm_mc_F0
 
