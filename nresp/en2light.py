@@ -247,9 +247,8 @@ as intersection point'''
 
 def geom(D, RG, DSZ, RSZ, DL, RL, X0, CX):
     '''Calculating the flight path's crossing points through the three cylunders
-n_cross_cyl       #crossing points, < 6
-MediaSequence(6)  material id:  1 scintillator, 2 light pipe, 3 Al, 4 vacuum (MAT-1)
-CrossPathLen(6)   path length to a crossing point(WEG)'''
+MediaSequence    material id:  1 scintillator, 2 light pipe, 3 Al, 4 vacuum (MAT-1)
+CrossPathLen     path length to a crossing point(WEG)'''
 
     global time_cyl, count_cyl
 
@@ -267,90 +266,88 @@ CrossPathLen(6)   path length to a crossing point(WEG)'''
     tcyl4 = time.time()
     time_cyl += tcyl4 - tcyl3
 
-    IndexPath = []
+    IndexPath = None
 
     if N1 == 1:  # Source point within detector
         if N2 == 0:
             if N3 == 0:
-                IndexPath = [1]
+                IndexPath = []
             elif N3 == 1:
-                IndexPath = [5, 1]
+                IndexPath = [5]
             else:
-                IndexPath = [4, 5, 1]
+                IndexPath = [4, 5]
         elif N2 == 1:
             if N3 == 2:
                 if W5 > W4:
-                    IndexPath = [3, 4, 5, 1]
+                    IndexPath = [3, 4, 5]
                 else:
-                    IndexPath = [3, 5, 1]
+                    IndexPath = [3, 5]
             else:
-                IndexPath = [3, 1]
+                IndexPath = [3]
         elif N2 == 2:
             if N3 == 0:
-                IndexPath = [2, 3, 1]
+                IndexPath = [2, 3]
             elif N3 == 1:
                 if W3 <= W6:
-                    IndexPath = [5, 3, 1]
+                    IndexPath = [5, 3]
                 else:
-                    IndexPath = [5, 2, 3, 1]
+                    IndexPath = [5, 2, 3]
             elif N3 == 2:
                 if W3 > W5:
                     if W5 > W4:
-                        IndexPath = [4, 5, 2, 3, 1]
+                        IndexPath = [4, 5, 2, 3]
                     else:
-                        IndexPath = [4, 4, 3, 1]
+                        IndexPath = [4, 4, 3]
                 else:
                     if W5 == W4:
-                        IndexPath = [2, 3, 5, 1]
+                        IndexPath = [2, 3, 5]
                     else:
-                        IndexPath = [2, 3, 4, 5, 1]
-
-    elif N1 == 2: # Source point outside detector
+                        IndexPath = [2, 3, 4, 5]
+    elif N1 == 2: # Source point outside detector, never occurring
         if N2 == 0:
             if N3 in (0, 1):
-                IndexPath = [0, 1]
+                IndexPath = [0]
             else:
-                IndexPath = [0, 4, 5, 1]
+                IndexPath = [0, 4, 5]
         elif N2 == 1:
             if N3 in (0, 1):
-                IndexPath = [0, 4, 5, 1]
+                IndexPath = [0, 4, 5]
             else:
                 if W3 <= W1:
-                    IndexPath = [0, 3, 1]
+                    IndexPath = [0, 3]
                 else:
-                    IndeyPath = [0, 2, 3, 1]
+                    IndeyPath = [0, 2, 3]
         elif N2 == 2:
             if N3 in (0, 1):
                 if W3 <= W1:
-                    IndexPath = [0, 3, 1]
+                    IndexPath = [0, 3]
                 else:
-                    IndeyPath = [0, 2, 3, 1]
+                    IndeyPath = [0, 2, 3]
             else:
                 if W3 > W5:
                     if W3 > W6:
-                        IndexPath = [0, 4, 5, 2, 3, 1]
+                        IndexPath = [0, 4, 5, 2, 3]
                     else:
-                        IndexPath = [0, 4, 5, 3, 1]
+                        IndexPath = [0, 4, 5, 3]
                 else:
                     if W5 > W4:
-                        IndexPath = [0, 2, 3, 4, 5, 1]
+                        IndexPath = [0, 2, 3, 4, 5]
                     else:
-                        IndexPath = [0, 2, 3, 5, 1]
+                        IndexPath = [0, 2, 3, 5]
 
-# Mapping media
+# Last medium is always "1" (W2, 3=Al)
+    IndexPath.append(1)
 
-    pathl = [W1, W2, W3, W4, W5, W6]
-    media = [ 4,  3,  3,  1,  3,  2]
-    CrossPathLen = np.array(pathl, dtype=settings.flt_typ)[IndexPath]
-    MediaSequence = np.array(media, dtype=settings.int_typ)[IndexPath]
+# Mapping medium
+    pathl = np.array([W1, W2, W3, W4, W5, W6], dtype=settings.flt_typ)
+    media = np.array([ 4,  3,  3,  1,  3,  2], dtype=settings.int_typ)
+    CrossPathLen  = pathl[IndexPath]
+    MediaSequence = media[IndexPath]
 
     if len(CrossPathLen) > 1:
-        if W2 <= CrossPathLen[-2]:
+        if CrossPathLen[-1] <= CrossPathLen[-2]:
             CrossPathLen = CrossPathLen[:-1]
             MediaSequence = MediaSequence[:-1]
-
-    if len(CrossPathLen) == 0:
-        return None, None
 
     return MediaSequence, CrossPathLen
 
