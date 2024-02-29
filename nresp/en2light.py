@@ -67,11 +67,10 @@ cx_out: versor of scattered particle'''
     return cx_out
 
 
-def reactionType(ZUU, type_min, type_max, En_in):
+def reactionType(ZUU, En_in, reac_list):
     '''Throwing dices for the reaction occurring in a given material'''
 
-    reac_type = type_min
-    for reac in CS.reacTotUse[type_min: type_max+1]:
+    for reac in reac_list:
         ZUU -= CS.cstInterp[reac](En_in)
         if ZUU < 0.:
             return reac
@@ -90,7 +89,8 @@ def reactionHC(MediumID, En_in, SH, SC, rnd):
         return 'H(N,N)H'
     if En_in < CS.EgridTot[0]:
         return '12C(N,N)12C'
-    return reactionType(ZUU, 1, 7, En_in)
+    return reactionType(ZUU, En_in, ["12C(N,N)12C", "12C(N,N')12C", "12C(N,A)9BE",
+        "12C(N,A)9BE'->N+3A", "12C(N,N')3A", "12C(N,P)12B", "12C(N,D)11B"])
 
 
 def photo_out(materialID, En_in, zr_dl):
@@ -858,7 +858,7 @@ def En2light(E_phsdim):
                 tre3 = time.time()
                 ZUU = rand[jrand]*SAL
                 jrand += 1
-                reac_type = reactionType(ZUU, 8, 9, ENE)
+                reac_type = reactionType(ZUU, ENE, ["27AL(N,N)27AL", "27AL(N,N')27AL'"])
                 tre4 = time.time()
                 time_reac2 += tre4 - tre3
                 if reac_type is None:
@@ -883,7 +883,7 @@ def En2light(E_phsdim):
 
 # End reaction chain
 
-        if weight >= 2E-5 and n_scat > 0 and LightYieldChain > 0.:
+        if weight >= 2E-5 and LightYieldChain > 0.:
             phsBin = int(LightYieldChain/settings.Ebin_MeVee)
             light_output[first_reac_type, phsBin] += weight
             count_reac  [first_reac_type] += 1 # count

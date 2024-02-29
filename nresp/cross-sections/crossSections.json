@@ -3,7 +3,7 @@
         "H(N,N)H", "12C(N,N)12C", "12C(N,N')12C", "12C(N,A)9BE",
         "12C(N,A)9BE'->N+3A", "12C(N,N')3A", "12C(N,P)12B",
         "12C(N,D)11B",
-        "27AL(N,N)27AL", "27AL(N,N')27AL'", "27AL(N,X)-absorption",
+        "27AL(N,N)27AL", "27AL(N,N')27AL'", 
         "CarTot", "AlTot", "HE1", "HE2", "12C(N,N')12C*"],
 
     "EgridTot": [
