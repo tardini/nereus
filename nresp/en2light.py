@@ -337,16 +337,24 @@ CrossPathLen(6)   path length to a crossing point(WEG)'''
                 MediaSequence[0] = 1
                 MediaSequence[1] = 3
                 n_cross_cyl = 2
-# Checked so far
         elif N2 == 2:
-            N4 = N3 + 1
-            if N4 == 1:
-                CrossPathLen[0] = W3
-                MediaSequence[0] = 3
-                CrossPathLen[1] = W4
-                MediaSequence[1] = 1
-                n_cross_cyl = 3
-            elif N4 == 2:
+            if N3 == 0:
+                if W2 <= W4:
+                    CrossPathLen[0] = W3
+                    CrossPathLen[1] = W4
+                    MediaSequence[0] = 3
+                    MediaSequence[1] = 1
+                    n_cross_cyl = 2
+                else:
+                    CrossPathLen[0] = W3
+                    CrossPathLen[1] = W4
+                    CrossPathLen[2] = W2
+                    MediaSequence[0] = 3
+                    MediaSequence[1] = 1
+                    MediaSequence[2] = 3
+                    n_cross_cyl = 3
+# Checked so far
+            elif N3 == 1:
                 CrossPathLen[0] = W6
                 MediaSequence[0] = 2
                 if W3 <= W6:
@@ -357,7 +365,7 @@ CrossPathLen(6)   path length to a crossing point(WEG)'''
                     n_cross_cyl = 4
                 CrossPathLen[n_cross_cyl-2] = W4
                 MediaSequence[n_cross_cyl-2] = 1
-            elif N4 == 3:
+            elif N3 == 2:
                 if W3 > W5:
                     CrossPathLen[0] = W5
                     MediaSequence[0] = 3
