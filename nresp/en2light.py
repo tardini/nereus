@@ -97,7 +97,6 @@ def photo_out(materialID, En_in, zr_dl):
     if zr_dl < 0:
         return 0
 
-    photo = 0.
     if materialID == 1: # H
         if En_in >= Egrid[-1]:
             photo = poly['DLT0'] + poly['DLT1']*En_in
@@ -284,21 +283,21 @@ CrossPathLen     path length to a crossing point(WEG)'''
             if N3 == 0:
                 IndexPath = [2, 3]
             elif N3 == 1:
-                if W3 <= W6:
-                    IndexPath = [5, 3]
-                else:
+                if W3 > W6:
                     IndexPath = [5, 2, 3]
+                else:
+                    IndexPath = [5, 3]
             elif N3 == 2:
                 if W3 > W5:
-                    if W5 > W4:
+                    if W3 > W6:
                         IndexPath = [4, 5, 2, 3]
                     else:
                         IndexPath = [4, 5, 3]
                 else:
-                    if W5 == W4:
-                        IndexPath = [2, 3, 5]
-                    else:
+                    if W5 > W4:
                         IndexPath = [2, 3, 4, 5]
+                    else:
+                        IndexPath = [2, 3, 5]
     elif N1 == 2: # Source point outside detector, never occurring
         if N2 == 0:
             if N3 in (0, 1):
@@ -309,16 +308,16 @@ CrossPathLen     path length to a crossing point(WEG)'''
             if N3 in (0, 1):
                 IndexPath = [0, 4, 5]
             else:
-                if W3 <= W1:
-                    IndexPath = [0, 3]
+                if W3 > W1:
+                    IndexPath = [0, 2, 3]
                 else:
-                    IndeyPath = [0, 2, 3]
+                    IndeyPath = [0, 3]
         elif N2 == 2:
             if N3 in (0, 1):
-                if W3 <= W1:
-                    IndexPath = [0, 3]
+                if W3 > W1:
+                    IndexPath = [0, 2, 3]
                 else:
-                    IndeyPath = [0, 2, 3]
+                    IndeyPath = [0, 3]
             else:
                 if W3 > W5:
                     if W3 > W6:
@@ -540,55 +539,57 @@ def En2light(E_phsdim):
             tg2 = time.time()
             time_geom += tg2 - tg1
 
-            if MediaSequence is not None:
-                n_cross_cyl = len(MediaSequence)
-                tim[0] = time.time()
-                if ENE != ene_old or 'SH' not in locals():
-                    SH  = CS.cstInterp['H(N,N)H'](ENE) # No log, different from fortran
-                    SC  = CS.cstInterp['CarTot'](ENE)
-                    SAL = CS.cstInterp['AlTot' ](ENE)
-                    SIGM[0] = XNH*SH  + XNC*SC
-                    SIGM[1] = XNHL*SH + XNCL*SC
-                    SIGM[2] = XNAL*SAL
+            if MediaSequence is None:
+                break
 
-                tim[1] = time.time()
+            n_cross_cyl = len(MediaSequence)
+            tim[0] = time.time()
+            if ENE != ene_old:
+                SH  = CS.cstInterp['H(N,N)H'](ENE) # No log, different from fortran
+                SC  = CS.cstInterp['CarTot'](ENE)
+                SAL = CS.cstInterp['AlTot' ](ENE)
+                SIGM[0] = XNH*SH  + XNC*SC
+                SIGM[1] = XNHL*SH + XNCL*SC
+                SIGM[2] = XNAL*SAL
 
-                SIG = 1e-4*SIGM[MediaSequence-1] # "-1": python indexing; MediaSequence is an array remapping indices
-                RHO = rand[jrand]
-                jrand += 1
+            tim[1] = time.time()
 
-                tim[2] = time.time()
+            SIG = 1e-4*SIGM[MediaSequence-1] # "-1": python indexing; MediaSequence is an array remapping indices
+            RHO = rand[jrand]
+            jrand += 1
 
-                GWT_EXP[0] = CrossPathLen[0]*SIG[0]
+            tim[2] = time.time()
+
+            GWT_EXP[0] = CrossPathLen[0]*SIG[0]
+            for I in range(1, n_cross_cyl):
+                GWT_EXP[I] = GWT_EXP[I-1] + (CrossPathLen[I] - CrossPathLen[I-1])*SIG[I]
+
+            RGWT = 1. - np.exp(-GWT_EXP)
+            tim[3] = time.time()
+
+            if n_scat <= 0:
+                weight = RGWT[n_cross_cyl-1]
+                RHO *= weight
+
+            log_RHO = np.log(1. - RHO)
+            MediumID = 4
+            PathInMedium = 0.
+            tim[4] = time.time()
+            tim[5] = time.time()
+            if SIG[0] > 0. and RGWT[0] >= RHO:
+                PathInMedium = -log_RHO/SIG[0]
+                MediumID = MediaSequence[0]
+            else:
                 for I in range(1, n_cross_cyl):
-                    GWT_EXP[I] = GWT_EXP[I-1] + (CrossPathLen[I] - CrossPathLen[I-1])*SIG[I]
+                    if RGWT[I] >= RHO:
+                        PathInMedium = CrossPathLen[I-1] - (GWT_EXP[I-1] + log_RHO)/SIG[I]
+                        MediumID = MediaSequence[I]
+                        break
 
-                RGWT = 1. - np.exp(-GWT_EXP)
-                tim[3] = time.time()
-
-                if n_scat <= 0:
-                    weight = RGWT[n_cross_cyl-1]
-                    RHO *= weight
-
-                log_RHO = np.log(1. - RHO)
+            if PathInMedium > CrossPathLen[n_cross_cyl-1]:
                 MediumID = 4
-                PathInMedium = 0.
-                tim[4] = time.time()
-                tim[5] = time.time()
-                if SIG[0] > 0. and RGWT[0] >= RHO:
-                    PathInMedium = -log_RHO/SIG[0]
-                    MediumID = MediaSequence[0]
-                else:
-                    for I in range(1, n_cross_cyl):
-                        if RGWT[I] >= RHO:
-                            PathInMedium = CrossPathLen[I-1] - (GWT_EXP[I-1] + log_RHO)/SIG[I]
-                            MediumID = MediaSequence[I]
-                            break
-
-                if PathInMedium > CrossPathLen[n_cross_cyl-1]:
-                    MediumID = 4
-                tim[6] = time.time()
-                time_slow += np.diff(tim)
+            tim[6] = time.time()
+            time_slow += np.diff(tim)
 
             XR = X0 + PathInMedium*CX
             zr_dl = XR[2] - detector['DL']
