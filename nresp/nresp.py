@@ -35,6 +35,7 @@ class NRESP:
     def __init__(self, En_in_MeV):
 
         self.reac_names = CS.reacTotUse
+        self.reac_names.append('light-guide')
         self.En_MeV = En_in_MeV
         self.nEn = len(self.En_MeV)
         jmax = np.argmax(self.En_MeV)
@@ -55,7 +56,7 @@ class NRESP:
 
         timeout_pool = int(settings.nmc/1e3)
         pool = Pool(cpu_count())
-        out = pool.map_async(En2light, [(x, self.phs_max) for x in self.En_MeV]).get(timeout_pool)
+        out = pool.map_async(En2light, [(EMeV, self.phs_max) for EMeV in self.En_MeV]).get(timeout_pool)
         pool.close()
         pool.join()
 
@@ -111,7 +112,7 @@ class NRESP:
         plt.figure('Reactions', (14, 8))
         plt.subplot(1, 2, 1)
         for jreact in range(n_react):
-            plt.plot(self.Ephs_MeVee, self.light_output[jEn, jreact], label=CS.reacTot[jreact])
+            plt.plot(self.Ephs_MeVee, self.light_output[jEn, jreact], label=self.reac_names[jreact])
         plt.ylim([0., 0.004])
         plt.legend()
 
@@ -129,8 +130,8 @@ if __name__ == '__main__':
     En_in_MeV = np.linspace(2, 18, nEn)
     nrsp = NRESP(En_in_MeV)
     nrsp.to_nresp(fout='%s/output/nresp.dat' %settings.nrespDir)
-    nrsp.plotResponse(E_MeV=10.)
-    plt.show()
+    nrsp.plotResponse(E_MeV=16.)
     rsp = response.RESP()
     rsp.from_nresp(f_spc='%s/output/nresp.dat' %settings.nrespDir)
     logger.info('Log stored in %s' %flog)
+    plt.show()
