@@ -297,7 +297,7 @@ CrossPathLen     path length to a crossing point(WEG)'''
                     if W5 > W4:
                         IndexPath = [4, 5, 2, 3]
                     else:
-                        IndexPath = [4, 4, 3] # ?
+                        IndexPath = [4, 5, 3]
                 else:
                     if W5 == W4:
                         IndexPath = [2, 3, 5]
@@ -555,7 +555,7 @@ def En2light(E_phsdim):
                 SIGM[0] = XNH*SH  + XNC*SC
                 SIGM[1] = XNHL*SH + XNCL*SC
                 SIGM[2] = XNAL*SAL
-                        
+
                 tim[1] = time.time()
 
                 SIG = 1e-4*SIGM[MediaSequence-1] # "-1": python indexing; MediaSequence is an array remapping indices
