@@ -25,6 +25,13 @@ flt_typ = settings.flt_typ
 int_typ = settings.int_typ
 
 mediaCross = np.array([ 4,  3,  3,  1,  3,  2], dtype=settings.int_typ)
+indPath = {}
+indPath[1] = { 0: {0:        [],  1:       [5], 2:          [4, 5]},
+               1: {0:       [3],  1:       [3], 2:       [3, 4, 5]},
+               2: {0:    [2, 3],  1: [5, 2, 3], 2:    [4, 5, 2, 3]} }
+indPath[2] = { 0: {0:       [0],  1:       [0], 2:       [0, 4, 5]},
+               1: {0: [0, 4, 5],  1: [0, 4, 5], 2:       [0, 2, 3]},
+               2: {0: [0, 2, 3],  1: [0, 2, 3], 2: [0, 4, 5, 2, 3]} }
 
 Egrid, det_light = np.loadtxt(settings.f_in_light, skiprows=1, unpack=True)
 light_int = interp1d(Egrid, det_light, assume_sorted=True, fill_value='extrapolate')
@@ -261,80 +268,27 @@ CrossPathLen     path length to a crossing point(WEG)'''
     tcyl4 = time.time()
     time_cyl += tcyl4 - tcyl3
 
-    IndexPath = None
+# Need a true copy
+    IndexPath = [x for x in indPath[N1][N2][N3]]
 
-    if N1 == 1:  # Source point within detector
-        if N2 == 0:
-            if N3 == 0:
-                IndexPath = []
-            elif N3 == 1:
-                IndexPath = [5]
-            else:
-                IndexPath = [4, 5]
-        elif N2 == 1:
-            if N3 == 2:
-                if W5 > W4:
-                    IndexPath = [3, 4, 5]
-                else:
-                    IndexPath = [3, 5]
-            else:
-                IndexPath = [3]
-        elif N2 == 2:
-            if N3 == 0:
-                IndexPath = [2, 3]
-            elif N3 == 1:
-                if W3 > W6:
-                    IndexPath = [5, 2, 3]
-                else:
-                    IndexPath = [5, 3]
-            elif N3 == 2:
-                if W3 > W5:
-                    if W3 > W6:
-                        IndexPath = [4, 5, 2, 3]
-                    else:
-                        IndexPath = [4, 5, 3]
-                else:
-                    if W5 > W4:
-                        IndexPath = [2, 3, 4, 5]
-                    else:
-                        IndexPath = [2, 3, 5]
-    elif N1 == 2: # Source point outside detector, never occurring
-        if N2 == 0:
-            if N3 in (0, 1):
-                IndexPath = [0]
-            else:
-                IndexPath = [0, 4, 5]
-        elif N2 == 1:
-            if N3 in (0, 1):
-                IndexPath = [0, 4, 5]
-            else:
-                if W3 > W1:
-                    IndexPath = [0, 2, 3]
-                else:
-                    IndeyPath = [0, 3]
-        elif N2 == 2:
-            if N3 in (0, 1):
-                if W3 > W1:
-                    IndexPath = [0, 2, 3]
-                else:
-                    IndeyPath = [0, 3]
-            else:
-                if W3 > W5:
-                    if W3 > W6:
-                        IndexPath = [0, 4, 5, 2, 3]
-                    else:
-                        IndexPath = [0, 4, 5, 3]
-                else:
-                    if W5 > W4:
-                        IndexPath = [0, 2, 3, 4, 5]
-                    else:
-                        IndexPath = [0, 2, 3, 5]
+# Mapping paths and medium
+    pathl = np.array([W1, W2, W3, W4, W5, W6], dtype=settings.flt_typ)
 
-# Last medium is always "1" (W2, 3=Al)
+# Swap last 2 pairs in case
+    crosspath = pathl[IndexPath]
+    if len(crosspath) > 3:
+        if crosspath[-2] <= crosspath[-4]:
+            IndexPath[-4:] = IndexPath[-2], IndexPath[-1], IndexPath[-4], IndexPath[-3]
+
+# Delete forelast element if its path is longer than the previous
+    crosspath = pathl[IndexPath]
+    if len(crosspath) > 2:
+        if crosspath[-2] <= crosspath[-3]:
+            del IndexPath[-2]
+
+# Last material is always "1"
     IndexPath.append(1)
 
-# Mapping medium
-    pathl = np.array([W1, W2, W3, W4, W5, W6], dtype=settings.flt_typ)
     CrossPathLen  = pathl[IndexPath]
     MediaSequence = mediaCross[IndexPath]
 
@@ -637,7 +591,6 @@ def En2light(E_phsdim):
                         CTCM  = (CTCM + AAA)/(1. - BBB + AAA*CTCM1 + BBB*CTCM1**2)
                     dEnucl = CS.crSec_d[reac_type]['dEnucl']
                     ctheta, cthetar, ENR, ENE = kinema(massMeV['neutron'], massMeV['H'], massMeV['neutron'], dEnucl, CTCM, ENE)
-
                     if zr_dl >= 0.:
                         if ENR <= 0.2: 
                             BR = 1.507E-3*ENR
@@ -785,7 +738,7 @@ def En2light(E_phsdim):
                     jrand += 1
                 ctheta, cthetar, ENR, ENE = kinema(massMeV['neutron'], massMeV['Al'], massMeV['neutron'], dEnucl, CTCM, ENE)
 
-            if ENE <= .01:
+            if ENE <= 0.01:
                 break #reac_chain
             CX = scatteringDirection(CX, ctheta, PHI)
             X0 = XR
