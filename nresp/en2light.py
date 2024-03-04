@@ -25,13 +25,6 @@ flt_typ = settings.flt_typ
 int_typ = settings.int_typ
 
 mediaCross = np.array([ 4,  3,  3,  1,  3,  2], dtype=settings.int_typ)
-indPath = {}
-indPath[1] = { 0: {0:        [],  1:       [5], 2:          [4, 5]},
-               1: {0:       [3],  1:       [3], 2:       [3, 4, 5]},
-               2: {0:    [2, 3],  1: [5, 2, 3], 2:    [4, 5, 2, 3]} }
-indPath[2] = { 0: {0:       [0],  1:       [0], 2:       [0, 4, 5]},
-               1: {0: [0, 4, 5],  1: [0, 4, 5], 2:       [0, 2, 3]},
-               2: {0: [0, 2, 3],  1: [0, 2, 3], 2: [0, 4, 5, 2, 3]} }
 
 Egrid, det_light = np.loadtxt(settings.f_in_light, skiprows=1, unpack=True)
 light_int = interp1d(Egrid, det_light, assume_sorted=True, fill_value='extrapolate')
@@ -98,32 +91,32 @@ def reactionHC(MediumID, En_in, SH, SC, rnd):
         "12C(N,A)9BE'->N+3A", "12C(N,N')3A", "12C(N,P)12B", "12C(N,D)11B"])
 
 
-def photo_out(materialID, En_in, zr_dl):
-    '''Light yield in an arbitrary material'''
+def photo_out(elementID, En_in, zr_dl):
+    '''Light yield for an arbitrary element'''
 
     if zr_dl < 0:
         return 0
 
-    if materialID == 1: # H
+    if elementID == 1: # H
         if En_in >= Egrid[-1]:
             photo = poly['DLT0'] + poly['DLT1']*En_in
         else:
             photo = light_int(En_in)
-    elif materialID == 2: # D
+    elif elementID == 2: # D
         En = 0.5*En_in
         if En >= Egrid[-1]:
             photo = poly['DLT0'] + poly['DLT1']*En
         else:
             photo = light_int(En)
         photo *= 2.
-    elif materialID == 3: # Al
+    elif elementID == 3: # He
         if En_in >= poly['ENAL1']:
             photo = poly['GLT0'] + (poly['GLT1'] + poly['GLT2']*En_in)*En_in
         else:
             photo = poly['FLT1'] * En_in**poly['FLT2']
-    elif materialID == 4: # Be
+    elif elementID == 4: # Be
         photo = poly['RLT1']*En_in
-    elif materialID == 5: # B, C
+    elif elementID == 5: # B, C
         photo = poly['SLT1']*En_in
 
     return photo
@@ -141,49 +134,46 @@ def photo_B8to2alpha(EA1, En_in, CX1, CXS, dEnucl, rnd):
     CA12 = np.dot(CX1, CX2)
     CA13 = np.dot(CX1, CX3)
     CA23 = np.dot(CX2, CX3)
-    materialIndex = [3, 3, 3]
+    elementIndex = [3, 3, 3]
     energy = [EA1, ENE, enr_loc]
     CA0 = 0.999999
 
     if CA12 >= CA0:
         if energy[0] >= energy[1]:
-            materialIndex[1] = 5
+            elementIndex[1] = 5
         else:
-            materialIndex[0] = 5
+            elementIndex[0] = 5
     if CA13 >= CA0:
         if energy[0] >= energy[2]:
-            materialIndex[2] = 5
+            elementIndex[2] = 5
         else:
-            materialIndex[0] = 5
+            elementIndex[0] = 5
     if CA23 >= CA0:
         if energy[1] >= energy[2]:
-            materialIndex[2] = 5
+            elementIndex[2] = 5
         else:
-            materialIndex[1] = 5
+            elementIndex[1] = 5
 
     phot_B8to2alpha = 0.
     for j in range(3):
-        phot_B8to2alpha += photo_out(materialIndex[j], energy[j], 1.)
+        phot_B8to2alpha += photo_out(elementIndex[j], energy[j], 1.)
 
     return phot_B8to2alpha
 
 
 @nb.njit
-def cylinder_crossing(R, H, H0, X0, CX):
+def cylinder_crossing(Radius, H, H0, X0, CX):
     '''Calculating intersections of a straight line crossing a cylinder
 z-axis = symmetry axis of the cylinder
 If the source point is at the cylinder, this is not counted
 as intersection point'''
 
-    N = 0
-    W1 = 0.
-    W2 = 0.
     H1 = H + H0
-    SQ = R**2 - X0[0]**2 - X0[1]**2
+    SQ = Radius**2 - X0[0]**2 - X0[1]**2
     C1 = CX[0]**2 + CX[1]**2
 
-    if SQ >= 0 and X0[2] <= H1 and X0[2] >= H0: # Source point inside cylinder
-        N = 1
+    if SQ >= 0 and X0[2] <= H1 and X0[2] >= H0: # Source point inside cylinder, 1 ray intersection
+        W1 = 0.
         if C1 < 1E-12: # horizontal
             if CX[2] < 0: W2 = (H0 - X0[2])/CX[2]
             if CX[2] > 0: W2 = (H1 - X0[2])/CX[2]
@@ -195,16 +185,13 @@ as intersection point'''
                 if Z < H0: W2 = (H0 - X0[2])/CX[2]
             else:
                 if Z > H1: W2 = (H1 - X0[2])/CX[2]
-        if W2 == 0.:
-            N = 0
     else:  # Source point outside cylinder
         if C1 <= 0: # horizontal, CX[2] = 1 or -1
             if SQ < 0.:
-                return N, W1, W2
+                return 0., 0.
             W1 = (H0 - X0[2])/CX[2]
             if W1 < 0.:
-                return N, W1, W2
-            N = 2
+                return 0., 0.
             W2 = (H1 - X0[2])/CX[2]
             if W2 <= W1:
                 W1, W2 = W2, W1
@@ -212,7 +199,7 @@ as intersection point'''
             S1 = (CX[0]*X0[0] + CX[1]*X0[1])/C1
             SQ2 = S1**2 + SQ/C1
             if SQ2 <= 0.:
-                return N, W1, W2
+                return 0., 0.
             SQ3 = np.sqrt(SQ2)
             W10 = -S1 - SQ3
             W20 = -S1 + SQ3
@@ -220,12 +207,12 @@ as intersection point'''
             Z2 = X0[2] + W20*CX[2]
     
             if CX[2] == 0:
-                return N, W1, W2 # Prevent division by zero
+                return 0., 0. # Prevent division by zero
             if Z1 <= H0 and Z2 <= H0:
-                return N, W1, W2
+                return 0., 0.
             if Z1 >= H1 and Z2 >= H1:
-                return N, W1, W2
-            N = 2
+                return 0., 0.
+# Two ray interesections
             if Z1 > H0 and Z1 < H1:
                 Z2 = max(Z2, H0)
                 Z2 = min(Z2, H1)
@@ -242,9 +229,9 @@ as intersection point'''
                 if W2 <= W1:
                     W1, W2 = W2, W1
         if W1 == W2 or W2 < 0.:
-            N = 0
+            return 0., 0.
 
-    return N, W1, W2
+    return W1, W2
 
 
 def geom(D, RG, DSZ, RSZ, DL, RL, X0, CX):
@@ -255,26 +242,26 @@ CrossPathLen     path length to a crossing point(WEG)'''
     global time_cyl, count_cyl
 
     tcyl1 = time.time()
-    N1, W1, W2 = cylinder_crossing(RG , D  , 0., X0, CX)
+    W1, W2 = cylinder_crossing(RG , D  , 0., X0, CX) # Outer cylinder
     count_cyl += 1
     tcyl2 = time.time()
     time_cyl += tcyl2 - tcyl1
-    if N1 == 0:
+    if W2 == 0.: # No intersections at all
         return None, None
     tcyl3 = time.time()
-    N2, W3, W4 = cylinder_crossing(RSZ, DSZ, DL, X0, CX)
-    N3, W5, W6 = cylinder_crossing(RL , DL , 0., X0, CX)
+    W3, W4 = cylinder_crossing(RSZ, DSZ, DL, X0, CX) # Scintillator
+    W5, W6 = cylinder_crossing(RL , DL , 0., X0, CX) # Light guide
     count_cyl += 2
     tcyl4 = time.time()
     time_cyl += tcyl4 - tcyl3
 
-# Need a true copy
-    IndexPath = [x for x in indPath[N1][N2][N3]]
-
 # Mapping paths and medium
     pathl = np.array([W1, W2, W3, W4, W5, W6], dtype=settings.flt_typ)
+    IndexPath = [j+2 for j, x in enumerate(pathl[2:]) if x] 
+    if W1 > 0.:
+        IndexPath.insert(0, 0)
 
-# Swap last 2 pairs in case
+# Swap last 2 pairs in case (light guide crossed before scintillator)
     crosspath = pathl[IndexPath]
     if len(crosspath) > 3:
         if crosspath[-2] <= crosspath[-4]:
@@ -286,15 +273,13 @@ CrossPathLen     path length to a crossing point(WEG)'''
         if crosspath[-2] <= crosspath[-3]:
             del IndexPath[-2]
 
-# Last material is always "1"
+# Last material is always "4" (vacuum)
     IndexPath.append(1)
-
-    CrossPathLen  = pathl[IndexPath]
+    CrossPathLen = pathl[IndexPath]
     MediaSequence = mediaCross[IndexPath]
-
     if len(CrossPathLen) > 1:
         if CrossPathLen[-1] <= CrossPathLen[-2]:
-            CrossPathLen = CrossPathLen[:-1]
+            CrossPathLen  = CrossPathLen[:-1]
             MediaSequence = MediaSequence[:-1]
 
     return MediaSequence, CrossPathLen
