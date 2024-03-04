@@ -24,7 +24,7 @@ CS = crossSections.crossSections()
 flt_typ = settings.flt_typ
 int_typ = settings.int_typ
 
-mediaCross = np.array([ 4,  3,  3,  1,  3,  2], dtype=settings.int_typ)
+mediaCross = np.array([3, 2, 2, 0, 2, 1], dtype=settings.int_typ)
 
 Egrid, det_light = np.loadtxt(settings.f_in_light, skiprows=1, unpack=True)
 light_int = interp1d(Egrid, det_light, assume_sorted=True, fill_value='extrapolate')
@@ -80,7 +80,7 @@ def reactionType(ZUU, jEne, reac_list):
 def reactionHC(MediumID, En_in, SH, SC, rnd):
     '''Throwing dices for the reaction in a C+H material'''
 
-    if MediumID == 1:
+    if MediumID == 0:
         alpha_sh = detector['alpha_sc']*SH #XNH/XNC
     else:
         alpha_sh = detector['alpha_lg']*SH #XNHL/XNCL
@@ -238,7 +238,7 @@ as intersection point'''
 
 def geom(D, RG, DSZ, RSZ, DL, RL, X0, CX):
     '''Calculating the flight path's crossing points through the three cylinders
-MediaSequence    material id:  1 scintillator, 2 light pipe, 3 Al, 4 vacuum (MAT-1)
+MediaSequence    material id:  0 scintillator, 1 light pipe, 2 Al, 3 vacuum (MAT-1)
 CrossPathLen     path length to a crossing point(WEG)'''
 
     global time_cyl, count_cyl
@@ -267,24 +267,22 @@ CrossPathLen     path length to a crossing point(WEG)'''
     crosspath = pathl[IndexPath]
     if len(crosspath) > 3:
         if crosspath[-2] <= crosspath[-4]:
-            IndexPath[-4:] = IndexPath[-2], IndexPath[-1], IndexPath[-4], IndexPath[-3]
+            IndexPath[-4:] = IndexPath[-2:] + IndexPath[-4:-2]
 
-# Delete forelast element if its path is longer than the previous
-    crosspath = pathl[IndexPath]
-    if len(crosspath) > 2:
-        if crosspath[-2] <= crosspath[-3]:
-            del IndexPath[-2]
-
-# Last material is always "4" (vacuum)
+# Last material is always "3" (vacuum)
     IndexPath.append(1)
-    CrossPathLen = pathl[IndexPath]
-    MediaSequence = mediaCross[IndexPath]
-    if len(CrossPathLen) > 1:
-        if CrossPathLen[-1] <= CrossPathLen[-2]:
-            CrossPathLen  = CrossPathLen[:-1]
-            MediaSequence = MediaSequence[:-1]
 
-    return MediaSequence, CrossPathLen
+# Delete 3rd-last element if its path is longer than the previous
+    crosspath = pathl[IndexPath]
+    if len(crosspath) > 3:
+        if crosspath[-3] <= crosspath[-4]:
+            del IndexPath[-3]
+
+    if len(crosspath) > 1:
+        if crosspath[-1] <= crosspath[-2]:
+            del IndexPath[-1]
+
+    return mediaCross[IndexPath], pathl[IndexPath]
 
 
 @nb.njit
@@ -494,7 +492,7 @@ def En2light(E_phsdim):
 
             tim[1] = time.time()
 
-            SIG = 1e-4*SIGM[MediaSequence-1] # "-1": python indexing; MediaSequence is an array remapping indices
+            SIG = 1e-4*SIGM[MediaSequence]
             RHO = rand[jrand]
             jrand += 1
 
@@ -512,7 +510,7 @@ def En2light(E_phsdim):
                 RHO *= weight
 
             log_RHO = np.log(1. - RHO)
-            MediumID = 4
+            MediumID = 3
             PathInMedium = 0.
             tim[4] = time.time()
             tim[5] = time.time()
@@ -527,14 +525,14 @@ def En2light(E_phsdim):
                         break
 
             if PathInMedium > CrossPathLen[n_cross_cyl-1]:
-                MediumID = 4
+                MediumID = 3
             tim[6] = time.time()
             time_slow += np.diff(tim)
 
             XR = X0 + PathInMedium*CX
             zr_dl = XR[2] - detector['DL']
 
-            if weight < 2.E-5 or MediumID == 4:
+            if weight < 2.E-5 or MediumID == 3:
                 break # Reac. chain
             n_scat += 1
 
@@ -544,7 +542,7 @@ def En2light(E_phsdim):
             Frnd = rand[jrand+1]
             jrand += 2
 
-            if MediumID in (1, 2):
+            if MediumID in (0, 1):
 
 #---------------------
 # Random reaction type
@@ -559,9 +557,9 @@ def En2light(E_phsdim):
                 time_reac1 += tre2 - tre1
 
                 if n_scat == 1: # Label first neutron reaction
-                    if MediumID == 1:
+                    if MediumID == 0:
                         first_reac_type = CS.reacTotUse.index(reac_type)
-                    elif MediumID == 2:
+                    elif MediumID == 1:
                         first_reac_type = n_react - 1 # 1st reaction (no matter which) in light guide
 
 #-----------
@@ -706,7 +704,7 @@ def En2light(E_phsdim):
                     break # reac_chain
 
 # Reaction in aluminium cage
-            elif MediumID == 3:
+            elif MediumID == 2:
                 tre3 = time.time()
                 ZUU = rand[jrand]*SAL
                 jrand += 1
