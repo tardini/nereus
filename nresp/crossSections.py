@@ -27,6 +27,7 @@ class crossSections:
         with open(f_json, 'r') as fjson:
             crSec = json.load(fjson)
         self.EgridTot  = crSec['EgridTot']
+        self.Egrid = 0.02*np.arange(1001)
         f_json = '%s/alphas3.json' %crossDir
         with open(f_json, 'r') as fjson:
             self.alphas3 = json.load(fjson)
@@ -64,9 +65,10 @@ class crossSections:
         for reac in self.reacDiff:
             self.csd_d[reac] = RectBivariateSpline(self.crSec_d[reac]['EgridDiff'], theta_grid, csDiff_d[reac], kx=2, ky=2)
 
-        self.cstInterp = {}
+        self.cst1d = {}
         for reac in self.reacTot:
-            self.cstInterp[reac] = interp1d(self.crSec_d[reac]['EgridTot'], self.crSec_d[reac]['crossTot'], kind='linear', assume_sorted=True, fill_value='extrapolate')
+            Interp = interp1d(self.crSec_d[reac]['EgridTot'], self.crSec_d[reac]['crossTot'], kind='linear', assume_sorted=True, fill_value='extrapolate')
+            self.cst1d[reac] = Interp(self.Egrid)
 
 
     def cosInterpReac2d(self, reac, En_in, randomAngle):

@@ -67,11 +67,11 @@ cx_out: versor of scattered particle'''
     return cx_out
 
 
-def reactionType(ZUU, En_in, reac_list):
+def reactionType(ZUU, jEne, reac_list):
     '''Throwing dices for the reaction occurring in a given material'''
 
     for reac in reac_list:
-        ZUU -= CS.cstInterp[reac](En_in)
+        ZUU -= CS.cst1d[reac][jEne]
         if ZUU < 0.:
             return reac
     return None
@@ -87,7 +87,9 @@ def reactionHC(MediumID, En_in, SH, SC, rnd):
     ZUU = rnd*(alpha_sh + SC) - alpha_sh
     if ZUU < 0.:
         return 'H(N,N)H'
-    return reactionType(ZUU, En_in, ["12C(N,N)12C", "12C(N,N')12C", "12C(N,A)9BE",
+    jEne = min(int(En_in*50.), 1000)
+
+    return reactionType(ZUU, jEne, ["12C(N,N)12C", "12C(N,N')12C", "12C(N,A)9BE",
         "12C(N,A)9BE'->N+3A", "12C(N,N')3A", "12C(N,P)12B", "12C(N,D)11B"])
 
 
@@ -482,9 +484,10 @@ def En2light(E_phsdim):
 
             n_cross_cyl = len(MediaSequence)
             tim[0] = time.time()
-            SH  = CS.cstInterp['H(N,N)H'](ENE) # No log, different from fortran
-            SC  = CS.cstInterp['CarTot'](ENE)
-            SAL = CS.cstInterp['AlTot' ](ENE)
+            jEne = min(int(ENE*50.), 1000)
+            SH  = CS.cst1d['H(N,N)H'][jEne] # No log, different from fortran
+            SC  = CS.cst1d['CarTot'][jEne]
+            SAL = CS.cst1d['AlTot' ][jEne]
             SIGM[0] = XNH*SH  + XNC*SC
             SIGM[1] = XNHL*SH + XNCL*SC
             SIGM[2] = XNAL*SAL
@@ -568,8 +571,8 @@ def En2light(E_phsdim):
                 if reac_type == 'H(N,N)H':
                     CTCM = 2.*Frnd - 1.
                     if ENE > 2.:   # Angular distribution
-                        AAA = CS.cstInterp['HE1'](ENE)
-                        BBB = CS.cstInterp['HE2'](ENE)
+                        AAA = CS.cst1d['HE1'][jEne]
+                        BBB = CS.cst1d['HE2'][jEne]
                         CTCM1 = (CTCM + AAA)/(1. - BBB + AAA*CTCM  + BBB*CTCM **2)
                         CTCM  = (CTCM + AAA)/(1. - BBB + AAA*CTCM1 + BBB*CTCM1**2)
                     dEnucl = CS.crSec_d[reac_type]['dEnucl']
@@ -707,7 +710,7 @@ def En2light(E_phsdim):
                 tre3 = time.time()
                 ZUU = rand[jrand]*SAL
                 jrand += 1
-                reac_type = reactionType(ZUU, ENE, ["27AL(N,N)27AL", "27AL(N,N')27AL'"])
+                reac_type = reactionType(ZUU, jEne, ["27AL(N,N)27AL", "27AL(N,N')27AL'"])
                 tre4 = time.time()
                 time_reac2 += tre4 - tre3
                 if reac_type is None:
