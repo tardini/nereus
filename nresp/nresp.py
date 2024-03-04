@@ -126,7 +126,7 @@ if __name__ == '__main__':
 
     import response
 
-    nEn = 9
+    nEn = 17 
     En_in_MeV = np.linspace(2, 18, nEn)
     nrsp = NRESP(En_in_MeV)
     nrsp.to_nresp(fout='%s/output/nresp.dat' %settings.nrespDir)
