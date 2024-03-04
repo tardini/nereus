@@ -466,7 +466,6 @@ def En2light(E_phsdim):
             ENE = gauss_rnd[jg_rnd]
             jg_rnd += 1
 
-        ene_old = -1.
 
 # Chain of reactions
         while(True):
@@ -483,13 +482,12 @@ def En2light(E_phsdim):
 
             n_cross_cyl = len(MediaSequence)
             tim[0] = time.time()
-            if ENE != ene_old:
-                SH  = CS.cstInterp['H(N,N)H'](ENE) # No log, different from fortran
-                SC  = CS.cstInterp['CarTot'](ENE)
-                SAL = CS.cstInterp['AlTot' ](ENE)
-                SIGM[0] = XNH*SH  + XNC*SC
-                SIGM[1] = XNHL*SH + XNCL*SC
-                SIGM[2] = XNAL*SAL
+            SH  = CS.cstInterp['H(N,N)H'](ENE) # No log, different from fortran
+            SC  = CS.cstInterp['CarTot'](ENE)
+            SAL = CS.cstInterp['AlTot' ](ENE)
+            SIGM[0] = XNH*SH  + XNC*SC
+            SIGM[1] = XNHL*SH + XNCL*SC
+            SIGM[2] = XNAL*SAL
 
             tim[1] = time.time()
 
@@ -564,7 +562,7 @@ def En2light(E_phsdim):
                         first_reac_type = n_react - 1 # 1st reaction (no matter which) in light guide
 
 #-----------
-# Kinematics 
+# Kinematics
 #-----------
 
                 if reac_type == 'H(N,N)H':
@@ -619,10 +617,11 @@ def En2light(E_phsdim):
                     LightYieldChain += photo_out(5, ENR, zr_dl)
 
                 elif reac_type == '12C(N,A)9BE':
-                    CTCM = CS.cosInterpReac2d(reac_type, ENE, Frnd)
-                    dEnucl = CS.crSec_d[reac_type]['dEnucl']
-                    ctheta, cthetar, ENR, ENE = kinema(massMeV['neutron'], massMeV['C12'], massMeV['He'], dEnucl, CTCM, ENE)
-                    LightYieldChain += photo_out(3, ENE, zr_dl) + photo_out(4, ENR, zr_dl)
+                    if zr_dl > 0.:
+                        CTCM = CS.cosInterpReac2d(reac_type, ENE, Frnd)
+                        dEnucl = CS.crSec_d[reac_type]['dEnucl']
+                        ctheta, cthetar, ENR, ENE = kinema(massMeV['neutron'], massMeV['C12'], massMeV['He'], dEnucl, CTCM, ENE)
+                        LightYieldChain += photo_out(3, ENE, zr_dl) + photo_out(4, ENR, zr_dl)
                     break # reac. chain
 
                 elif reac_type =="12C(N,A)9BE'->N+3A":
@@ -688,17 +687,19 @@ def En2light(E_phsdim):
                         jrand += 2
 
                 elif reac_type == '12C(N,P)12B':
-                    CTCM = 2.*Frnd - 1.
-                    dEnucl = CS.crSec_d[reac_type]['dEnucl']
-                    ctheta, cthetar, ENR, ENE = kinema(massMeV['neutron'], massMeV['C12'], massMeV['H'], dEnucl, CTCM, ENE)
-                    LightYieldChain += photo_out(1, ENE, zr_dl) + photo_out(5, ENR, zr_dl)
+                    if zr_dl > 0.:
+                        CTCM = 2.*Frnd - 1.
+                        dEnucl = CS.crSec_d[reac_type]['dEnucl']
+                        ctheta, cthetar, ENR, ENE = kinema(massMeV['neutron'], massMeV['C12'], massMeV['H'], dEnucl, CTCM, ENE)
+                        LightYieldChain += photo_out(1, ENE, zr_dl) + photo_out(5, ENR, zr_dl)
                     break # reac_chain
 
                 elif reac_type == '12C(N,D)11B':
-                    CTCM = 2.*Frnd - 1.
-                    dEnucl = CS.crSec_d[reac_type]['dEnucl']
-                    ctheta, cthetar, ENR, ENE = kinema(massMeV['neutron'], massMeV['C12'], massMeV['D'], dEnucl, CTCM, ENE)
-                    LightYieldChain += photo_out(2, ENE, zr_dl) + photo_out(5, ENR, zr_dl)
+                    if zr_dl > 0.:
+                        CTCM = 2.*Frnd - 1.
+                        dEnucl = CS.crSec_d[reac_type]['dEnucl']
+                        ctheta, cthetar, ENR, ENE = kinema(massMeV['neutron'], massMeV['C12'], massMeV['D'], dEnucl, CTCM, ENE)
+                        LightYieldChain += photo_out(2, ENE, zr_dl) + photo_out(5, ENR, zr_dl)
                     break # reac_chain
 
 # Reaction in aluminium cage
@@ -727,7 +728,6 @@ def En2light(E_phsdim):
                 break #reac_chain
             CX = scatteringDirection(CX, ctheta, PHI)
             X0 = XR
-            ene_old = ENE
 
 # End reaction chain
 
