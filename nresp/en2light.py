@@ -11,11 +11,8 @@ logger.setLevel(level=logging.DEBUG)
 
 # Measure CPU time for several methods
 
-time_phot = 0.
 time_cyl  = 0.
-
-count_phot = 0
-count_cyl  = 0
+count_cyl = 0
 
 PI2 = 2.*np.pi
 
@@ -24,7 +21,7 @@ CS = crossSections.crossSections()
 flt_typ = settings.flt_typ
 int_typ = settings.int_typ
 
-mediaCross = np.array([3, 2, 2, 0, 2, 1], dtype=settings.int_typ)
+mediaCross = np.array([3, 2, 2, 0, 2, 1], dtype=int_typ)
 
 Egrid, det_light = np.loadtxt(settings.f_in_light, skiprows=1, unpack=True)
 light_int = interp1d(Egrid, det_light, assume_sorted=True, fill_value='extrapolate')
@@ -87,7 +84,7 @@ def reactionHC(MediumID, En_in, SH, SC, rnd):
     ZUU = rnd*(alpha_sh + SC) - alpha_sh
     if ZUU < 0.:
         return 'H(N,N)H'
-    jEne = min(int(En_in*50.), 1000)
+    jEne = min(int(En_in*50.), len(CS.Egrid)-1)
 
     return reactionType(ZUU, jEne, ["12C(N,N)12C", "12C(N,N')12C", "12C(N,A)9BE",
         "12C(N,A)9BE'->N+3A", "12C(N,N')3A", "12C(N,P)12B", "12C(N,D)11B"])
@@ -258,7 +255,7 @@ CrossPathLen     path length to a crossing point(WEG)'''
     time_cyl += tcyl4 - tcyl3
 
 # Mapping paths and medium
-    pathl = np.array([W1, W2, W3, W4, W5, W6], dtype=settings.flt_typ)
+    pathl = np.array([W1, W2, W3, W4, W5, W6], dtype=flt_typ)
     IndexPath = [j+2 for j, x in enumerate(pathl[2:]) if x] 
     if W1 > 0.:
         IndexPath.insert(0, 0)
@@ -482,7 +479,7 @@ def En2light(E_phsdim):
 
             n_cross_cyl = len(MediaSequence)
             tim[0] = time.time()
-            jEne = min(int(ENE*50.), 1000)
+            jEne = min(int(ENE*50.), len(CS.Egrid)-1)
             SH  = CS.cst1d['H(N,N)H'][jEne] # No log, different from fortran
             SC  = CS.cst1d['CarTot'][jEne]
             SAL = CS.cst1d['AlTot' ][jEne]
