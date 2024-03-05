@@ -17,6 +17,7 @@ count_cyl = 0
 PI2 = 2.*np.pi
 
 CS = crossSections.crossSections()
+dE = (CS.Egrid[-1] - CS.Egrid[0])/float(len(CS.Egrid) - 1)
 
 flt_typ = settings.flt_typ
 int_typ = settings.int_typ
@@ -84,7 +85,7 @@ def reactionHC(MediumID, En_in, SH, SC, rnd):
     ZUU = rnd*(alpha_sh + SC) - alpha_sh
     if ZUU < 0.:
         return 'H(N,N)H'
-    jEne = min(int(En_in*50.), len(CS.Egrid)-1)
+    jEne = min(int(En_in/dE), len(CS.Egrid)-1)
 
     return reactionType(ZUU, jEne, ["12C(N,N)12C", "12C(N,N')12C", "12C(N,A)9BE",
         "12C(N,A)9BE'->N+3A", "12C(N,N')3A", "12C(N,P)12B", "12C(N,D)11B"])
@@ -256,30 +257,38 @@ CrossPathLen     path length to a crossing point(WEG)'''
 
 # Mapping paths and medium
     pathl = np.array([W1, W2, W3, W4, W5, W6], dtype=flt_typ)
-    IndexPath = [j+2 for j, x in enumerate(pathl[2:]) if x] 
-    if W1 > 0.:
-        IndexPath.insert(0, 0)
+    IndexPath = PathMedia(pathl)
 
-# Swap last 2 pairs in case (light guide crossed before scintillator)
-    crosspath = pathl[IndexPath]
-    if len(crosspath) > 3:
-        if crosspath[-2] <= crosspath[-4]:
-            IndexPath[-4:] = IndexPath[-2:] + IndexPath[-4:-2]
+    return mediaCross[IndexPath], pathl[IndexPath]
+
+
+@nb.njit
+def PathMedia(pathl):
+
+    IndexPath = [j+2 for j, x in enumerate(pathl[2:]) if x]
+    if pathl[0] > 0.:
+        IndexPath.insert(0, 0)
 
 # Last material is always "3" (vacuum)
     IndexPath.append(1)
 
+# Swap last 2 pairs in case (light guide crossed before scintillator)
+    crosspath = pathl[np.array(IndexPath)]
+    n_cross = len(crosspath)
+    if n_cross > 4:
+        if crosspath[-3] <= crosspath[-5]:
+            IndexPath[-5:-3], IndexPath[-3:-1] = IndexPath[-3:-1], IndexPath[-5:-3]
+
 # Delete 3rd-last element if its path is longer than the previous
-    crosspath = pathl[IndexPath]
-    if len(crosspath) > 3:
+    crosspath = pathl[np.array(IndexPath)]
+    if n_cross > 3:
         if crosspath[-3] <= crosspath[-4]:
             del IndexPath[-3]
-
-    if len(crosspath) > 1:
+    if n_cross > 1:
         if crosspath[-1] <= crosspath[-2]:
             del IndexPath[-1]
 
-    return mediaCross[IndexPath], pathl[IndexPath]
+    return IndexPath
 
 
 @nb.njit
@@ -324,11 +333,12 @@ def En2light(E_phsdim):
     nmc = int(settings.nmc)
     En_wid = settings.En_wid_frac*En_in_MeV
 
-    time_reac1 = 0.
-    time_reac2 = 0.
-    time_geom = 0.
-    tim = np.zeros(7)
+    time_reac = {}
+    for reac in CS.reacTotUse:
+        time_reac[reac] = 0.
+    tim = np.zeros(6)
     time_slow = np.zeros(len(tim) - 1)
+    time_pre = 0.
 
     GWT_EXP = np.zeros(6, dtype=flt_typ)
     SIGM = np.zeros(4, dtype=flt_typ)
@@ -396,6 +406,7 @@ def En2light(E_phsdim):
 # MC loop
     np.random.seed(0)
     for j_mc in range(nmc):
+        tbeg = time.time()
         if jrand > n_rand1:
             jrand = 0
             rand = np.random.random_sample(n_rand)
@@ -463,23 +474,24 @@ def En2light(E_phsdim):
             ENE = gauss_rnd[jg_rnd]
             jg_rnd += 1
 
+        tend = time.time()
+        time_pre += tend - tbeg
 
 # Chain of reactions
         while(True):
 
 # Flight path
 # Input: D, RG, DSZ, RSZ, DL, RL, X0[2], CX[2]
-            tg1 = time.time()
+            tim[0] = time.time()
             MediaSequence, CrossPathLen = geom(detector['D'], detector['RG'], detector['DSZ'], detector['RSZ'], detector['DL'], detector['RL'], X0, CX)
-            tg2 = time.time()
-            time_geom += tg2 - tg1
+            tim[1] = time.time()
 
             if MediaSequence is None:
                 break
 
+            tim[2] = time.time()
             n_cross_cyl = len(MediaSequence)
-            tim[0] = time.time()
-            jEne = min(int(ENE*50.), len(CS.Egrid)-1)
+            jEne = min(int(ENE/dE), len(CS.Egrid)-1)
             SH  = CS.cst1d['H(N,N)H'][jEne] # No log, different from fortran
             SC  = CS.cst1d['CarTot'][jEne]
             SAL = CS.cst1d['AlTot' ][jEne]
@@ -487,20 +499,15 @@ def En2light(E_phsdim):
             SIGM[1] = XNHL*SH + XNCL*SC
             SIGM[2] = XNAL*SAL
 
-            tim[1] = time.time()
-
             SIG = 1e-4*SIGM[MediaSequence]
             RHO = rand[jrand]
             jrand += 1
-
-            tim[2] = time.time()
 
             GWT_EXP[0] = CrossPathLen[0]*SIG[0]
             for I in range(1, n_cross_cyl):
                 GWT_EXP[I] = GWT_EXP[I-1] + (CrossPathLen[I] - CrossPathLen[I-1])*SIG[I]
 
             RGWT = 1. - np.exp(-GWT_EXP)
-            tim[3] = time.time()
 
             if n_scat <= 0:
                 weight = RGWT[n_cross_cyl-1]
@@ -509,8 +516,6 @@ def En2light(E_phsdim):
             log_RHO = np.log(1. - RHO)
             MediumID = 3
             PathInMedium = 0.
-            tim[4] = time.time()
-            tim[5] = time.time()
             if SIG[0] > 0. and RGWT[0] >= RHO:
                 PathInMedium = -log_RHO/SIG[0]
                 MediumID = MediaSequence[0]
@@ -523,14 +528,14 @@ def En2light(E_phsdim):
 
             if PathInMedium > CrossPathLen[n_cross_cyl-1]:
                 MediumID = 3
-            tim[6] = time.time()
-            time_slow += np.diff(tim)
 
             XR = X0 + PathInMedium*CX
             zr_dl = XR[2] - detector['DL']
+            tim[3] = time.time()
 
             if weight < 2.E-5 or MediumID == 3:
                 break # Reac. chain
+            tim[4] = time.time()
             n_scat += 1
 
 # Random scattering angle
@@ -539,6 +544,9 @@ def En2light(E_phsdim):
             Frnd = rand[jrand+1]
             jrand += 2
 
+            tim[5] = time.time()
+            time_slow += np.diff(tim)
+
             if MediumID in (0, 1):
 
 #---------------------
@@ -546,12 +554,9 @@ def En2light(E_phsdim):
 #---------------------
 
                 reac_type = None
-                tre1 = time.time()
                 while reac_type is None:
                     reac_type = reactionHC(MediumID, ENE, SH, SC, rand[jrand])
                     jrand += 1
-                tre2 = time.time()
-                time_reac1 += tre2 - tre1
 
                 if n_scat == 1: # Label first neutron reaction
                     if MediumID == 0:
@@ -564,6 +569,7 @@ def En2light(E_phsdim):
 #-----------
 
                 if reac_type == 'H(N,N)H':
+                    tbeg = time.time()
                     CTCM = 2.*Frnd - 1.
                     if ENE > 2.:   # Angular distribution
                         AAA = CS.cst1d['HE1'][jEne]
@@ -607,22 +613,28 @@ def En2light(E_phsdim):
                                 else:
                                     ENT = 663.57*PATH
                                 LightYieldChain -= photo_out(1, ENT, zr_dl)
+                    time_reac[reac_type] += time.time() - tbeg
 
                 elif reac_type in ('12C(N,N)12C', "12C(N,N')12C"):
+                    tbeg = time.time()
                     CTCM = CS.cosInterpReac2d(reac_type, ENE, Frnd) # elastic
                     dEnucl = CS.crSec_d[reac_type]['dEnucl']
                     ctheta, cthetar, ENR, ENE = kinema(massMeV['neutron'], massMeV['C12'], massMeV['neutron'], dEnucl, CTCM, ENE)
                     LightYieldChain += photo_out(5, ENR, zr_dl)
+                    time_reac[reac_type] += time.time() - tbeg
 
                 elif reac_type == '12C(N,A)9BE':
+                    tbeg = time.time()
                     if zr_dl > 0.:
                         CTCM = CS.cosInterpReac2d(reac_type, ENE, Frnd)
                         dEnucl = CS.crSec_d[reac_type]['dEnucl']
                         ctheta, cthetar, ENR, ENE = kinema(massMeV['neutron'], massMeV['C12'], massMeV['He'], dEnucl, CTCM, ENE)
                         LightYieldChain += photo_out(3, ENE, zr_dl) + photo_out(4, ENR, zr_dl)
+                    time_reac[reac_type] += time.time() - tbeg
                     break # reac. chain
 
                 elif reac_type =="12C(N,A)9BE'->N+3A":
+                    tbeg = time.time()
                     CTCM = 2.*Frnd - 1.
                     dEnucl = CS.crSec_d[reac_type]['dEnucl']
                     ctheta, cthetar, ENR, EA1 = kinema(massMeV['neutron'], massMeV['C12'], massMeV['He'], dEnucl, CTCM, ENE)
@@ -642,8 +654,10 @@ def En2light(E_phsdim):
                             LEVEL0 = 10
                         LightYieldChain += photo_B8to2alpha(EA1, ENR, CX1, CXS, dEnucl, rand[jrand:jrand+2])
                         jrand += 2
+                    time_reac[reac_type] += time.time() - tbeg
 
                 elif reac_type == "12C(N,N')3A":
+                    tbeg = time.time()
                     LEVEL = 0
                     if ENE >= 10.:
                         NRA = rand[jrand]
@@ -683,31 +697,33 @@ def En2light(E_phsdim):
                             dEnucl += 3.
                         LightYieldChain += photo_B8to2alpha(EA1, ENR, CX1, CXS, dEnucl, rand[jrand: jrand+2])
                         jrand += 2
+                    time_reac[reac_type] += time.time() - tbeg
 
                 elif reac_type == '12C(N,P)12B':
+                    tbeg = time.time()
                     if zr_dl > 0.:
                         CTCM = 2.*Frnd - 1.
                         dEnucl = CS.crSec_d[reac_type]['dEnucl']
                         ctheta, cthetar, ENR, ENE = kinema(massMeV['neutron'], massMeV['C12'], massMeV['H'], dEnucl, CTCM, ENE)
                         LightYieldChain += photo_out(1, ENE, zr_dl) + photo_out(5, ENR, zr_dl)
+                    time_reac[reac_type] += time.time() - tbeg
                     break # reac_chain
 
                 elif reac_type == '12C(N,D)11B':
+                    tbeg = time.time()
                     if zr_dl > 0.:
                         CTCM = 2.*Frnd - 1.
                         dEnucl = CS.crSec_d[reac_type]['dEnucl']
                         ctheta, cthetar, ENR, ENE = kinema(massMeV['neutron'], massMeV['C12'], massMeV['D'], dEnucl, CTCM, ENE)
                         LightYieldChain += photo_out(2, ENE, zr_dl) + photo_out(5, ENR, zr_dl)
+                    time_reac[reac_type] += time.time() - tbeg
                     break # reac_chain
 
 # Reaction in aluminium cage
             elif MediumID == 2:
-                tre3 = time.time()
                 ZUU = rand[jrand]*SAL
                 jrand += 1
                 reac_type = reactionType(ZUU, jEne, ["27AL(N,N)27AL", "27AL(N,N')27AL'"])
-                tre4 = time.time()
-                time_reac2 += tre4 - tre3
                 if reac_type is None:
                     break #reac_chain
                 if n_scat <= 1:
@@ -747,14 +763,13 @@ def En2light(E_phsdim):
     light_output *= norm_mc_F0
     pp3as_output *= norm_mc_F0
 
-    logger.debug('Time analysis:')
-    logger.debug('geom %8.4f', time_geom)
+    logger.debug('\nTime analysis:')
     logger.debug('cyl_cross %8.4f %d', time_cyl , count_cyl)
-    logger.debug('reac1 %f8.4', time_reac1)
-    logger.debug('reac2 %f8.4', time_reac2)
+    logger.debug('time_pre %8.4f', time_pre)
+    for reac in CS.reacTotUse:
+        logger.debug('%s %8.4f', reac, time_reac[reac])
     logger.debug('Bottle necks in energy chain, En=%8.4f MeV' %En_in_MeV)
     for ts in time_slow:
         logger.debug(ts)
-    logger.debug(np.sum(time_slow))
 
     return count_reac, count_pp3as, phs_dim_rea, phs_dim_pp3, light_output, pp3as_output
