@@ -5,13 +5,15 @@ import numpy as np
 import matplotlib.pylab as plt
 from multiprocessing import Pool, cpu_count
 from nresp.en2light import En2light
-from nresp import crossSections, settings, rw_for
+from nresp import crossSections, rw_for
+
+nrespDir = os.path.dirname(os.path.realpath(__file__))
 
 fmt = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s | %(message)s', '%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger('nresp')
 logger.setLevel(level=logging.DEBUG)
 hnd  = logging.StreamHandler()
-flog = '%s/output/nresp.log' %settings.nrespDir
+flog = '%s/output/nresp.log' %nrespDir
 fhnd = logging.FileHandler(flog, mode='w') # mode='a' for appending
 hnd.setLevel(level=logging.INFO)
 fhnd.setLevel(level=logging.DEBUG)
@@ -21,7 +23,6 @@ logger.addHandler(hnd)
 logger.addHandler(fhnd)
 logger.propagate = False
 
-nrespDir = os.path.dirname(os.path.realpath(__file__))
 os.system('mkdir -p %s/output' %nrespDir)
 
 CS = crossSections.crossSections()
@@ -112,29 +113,15 @@ class NRESP:
         n_react = self.light_output.shape[1]
 
         fig = plt.figure('NRESP reactions', (8.8, 5.9))
+        fig.text(0.5, 0.95, r'E$_n$=%6.3f MeV' %self.En_MeV[jEn], ha='center')
         ax1 = fig.add_subplot(1, 2, 1)
         for jreact in range(n_react):
             ax1.plot(self.Ephs_MeVee, self.light_output[jEn, jreact], label=self.reac_names[jreact])
-        ax1.set_ylim([0., 0.004])
+        ax1.set_ylim([0., 1.])
         ax1.legend()
 
         ax2 = fig.add_subplot(1, 2, 2)
         resp = np.sum(self.light_output, axis=1)
         ax2.plot(self.Ephs_MeVee, resp[jEn])
-        ax2.set_ylim([0., 0.02])
+        ax2.set_ylim([0., 5.])
         return fig
-
-
-if __name__ == '__main__':
-
-    import response
-
-    nEn = 17 
-    En_in_MeV = np.linspace(2, 18, nEn)
-    nrsp = NRESP(En_in_MeV, settings.nresp_set)
-    nrsp.to_nresp(fout='%s/output/nresp.dat' %nrespDir)
-    nrsp.plotResponse(E_MeV=16.)
-    rsp = response.RESP()
-    rsp.from_nresp(f_spc='%s/output/nresp.dat' %nrespDir)
-    logger.info('Log stored in %s' %flog)
-    plt.show()

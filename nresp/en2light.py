@@ -759,7 +759,7 @@ def En2light(tuple_in):
 
 # Unnormalise arrays w.r.t. NMC and viewing solid angle
 
-    norm_mc_F0 = (np.pi*rg_sq*cos_the + 2.*detector['D']*detector['RG']*sin_the)/float(nmc)
+    norm_mc_F0 = (np.pi*rg_sq*cos_the + 2.*detector['D']*detector['RG']*sin_the)/float(nmc*nresp_set['Ebin_MeVee'])
     light_output *= norm_mc_F0
     pp3as_output *= norm_mc_F0
 

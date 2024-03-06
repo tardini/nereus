@@ -2,11 +2,11 @@ import os, json, logging
 import numpy as np
 from scipy.interpolate import interp1d, RectBivariateSpline
 import matplotlib.pylab as plt
-from nresp.settings import nrespDir
 
 logger = logging.getLogger('nresp.cs')
 logger.setLevel(level=logging.DEBUG)
 
+nrespDir = os.path.dirname(os.path.realpath(__file__))
 crossDir='%s/cross-sections' %nrespDir
 flt_typ = np.float64
 
