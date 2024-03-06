@@ -4,10 +4,8 @@ import os, logging
 import numpy as np
 import matplotlib.pylab as plt
 from multiprocessing import Pool, cpu_count
-from en2light import En2light
-import crossSections, settings, rw_for
-
-os.system('mkdir -p %s/output' %settings.nrespDir)
+from nresp.en2light import En2light
+from nresp import crossSections, settings, rw_for
 
 fmt = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s | %(message)s', '%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger('nresp')
@@ -23,30 +21,34 @@ logger.addHandler(hnd)
 logger.addHandler(fhnd)
 logger.propagate = False
 
+nrespDir = os.path.dirname(os.path.realpath(__file__))
+os.system('mkdir -p %s/output' %nrespDir)
+
 CS = crossSections.crossSections()
 #CS.plot()
-flt_typ = settings.flt_typ
-int_typ = settings.int_typ
+flt_typ = np.float64
+int_typ = np.int32
 
 
 class NRESP:
 
 
-    def __init__(self, En_in_MeV):
+    def __init__(self, En_in_MeV, nresp_set):
 
         self.reac_names = CS.reacTotUse
         self.reac_names.append('light-guide')
         self.En_MeV = En_in_MeV
+        self.nresp_set = nresp_set
         self.nEn = len(self.En_MeV)
         jmax = np.argmax(self.En_MeV)
         self.n_react = len(self.reac_names)
-        self.En_wid_MeV = settings.En_wid_frac*self.En_MeV
+        self.En_wid_MeV = self.nresp_set['En_wid_frac']*self.En_MeV
         En_wid = self.En_wid_MeV[jmax]
-        if settings.distr == 'mono':
-            self.phs_max = int(self.En_MeV[jmax]/settings.Ebin_MeVee)
-        elif settings.distr == 'gauss':
-            self.phs_max = int((self.En_MeV[jmax] + 5*En_wid)/settings.Ebin_MeVee)
-        self.EphsB_MeVee = settings.Ebin_MeVee*np.arange(self.phs_max + 1)
+        if self.nresp_set['distr'] == 'mono':
+            self.phs_max = int(self.En_MeV[jmax]/self.nresp_set['Ebin_MeVee'])
+        elif self.nresp_set['distr'] == 'gauss':
+            self.phs_max = int((self.En_MeV[jmax] + 5*En_wid)/self.nresp_set['Ebin_MeVee'])
+        self.EphsB_MeVee = self.nresp_set['Ebin_MeVee']*np.arange(self.phs_max + 1)
         self.Ephs_MeVee = 0.5*(self.EphsB_MeVee[1:] + self.EphsB_MeVee[:-1])
 
         self.run()
@@ -54,19 +56,20 @@ class NRESP:
 
     def run(self):
 
-        timeout_pool = int(settings.nmc/1e3)
+        timeout_pool = int(self.nresp_set['nmc']/1e3)
         pool = Pool(cpu_count())
-        out = pool.map_async(En2light, [(EMeV, self.phs_max) for EMeV in self.En_MeV]).get(timeout_pool)
+        out = pool.map_async(En2light, [(EMeV, self.phs_max, self.nresp_set) for EMeV in self.En_MeV]).get(timeout_pool)
         pool.close()
         pool.join()
 
-        logger.info('END light output calculation, nMC=%d, nEn=%d', settings.nmc, len(self.En_MeV))
+        logger.info('END light output calculation, nMC=%d, nEn=%d', self.nresp_set['nmc'], len(self.En_MeV))
         self.count_reac   = np.zeros((self.nEn, self.n_react), dtype=int_typ)
         self.phs_dim_rea  = np.zeros((self.nEn, self.n_react), dtype=int_typ)
         self.count_pp3as  = np.zeros((self.nEn, CS.max_level), dtype=int_typ)
         self.phs_dim_pp3  = np.zeros((self.nEn, CS.max_level), dtype=int_typ)
         self.pp3as_output = np.zeros((self.nEn, CS.max_level, self.phs_max), dtype=flt_typ)
         self.light_output = np.zeros((self.nEn, self.n_react, self.phs_max), dtype=flt_typ)
+        print(self.nEn, self.n_react, x[0].shape)
         for jE, x in enumerate(out):
             self.count_reac  [jE] = x[0]
             self.count_pp3as [jE] = x[1]
@@ -79,10 +82,10 @@ class NRESP:
         self.RespMat = np.sum(self.light_output, axis=1)
 
 
-    def to_nresp(self, fout='%s/output/spect.dat' %settings.nrespDir):
+    def to_nresp(self, fout='%s/output/spect.dat' %nrespDir):
 
         f = open(fout, 'w')
-        f.write('%15.6e\n' %settings.Ebin_MeVee)
+        f.write('%15.6e\n' %self.nresp_set['Ebin_MeVee'])
         for jEn, En in enumerate(self.En_MeV):
             for jreac, reac in enumerate(self.reac_names):
                 count = self.count_reac[jEn, jreac]
@@ -128,10 +131,10 @@ if __name__ == '__main__':
 
     nEn = 17 
     En_in_MeV = np.linspace(2, 18, nEn)
-    nrsp = NRESP(En_in_MeV)
-    nrsp.to_nresp(fout='%s/output/nresp.dat' %settings.nrespDir)
+    nrsp = NRESP(En_in_MeV, settings.nresp_set)
+    nrsp.to_nresp(fout='%s/output/nresp.dat' %nrespDir)
     nrsp.plotResponse(E_MeV=16.)
     rsp = response.RESP()
-    rsp.from_nresp(f_spc='%s/output/nresp.dat' %settings.nrespDir)
+    rsp.from_nresp(f_spc='%s/output/nresp.dat' %nrespDir)
     logger.info('Log stored in %s' %flog)
     plt.show()

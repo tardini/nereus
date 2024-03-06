@@ -26,6 +26,7 @@ import calc_spectrum as spc
 import los
 import plots
 from reactions import reaction
+from nresp import nresp
 
 os.environ['BROWSER'] = '/usr/bin/firefox'
 
@@ -49,7 +50,7 @@ class REAC_GUI(QMainWindow):
         else:
             super(QMainWindow, self).__init__()
 
-        xwin  = 805
+        xwin  = 1000
         yhead = 44
         yline = 30
         ybar  = 54
@@ -96,6 +97,11 @@ class REAC_GUI(QMainWindow):
         qlos.setLayout(los_layout)
         qtabs.addTab(qlos, 'Detector LoS')
 
+        qnresp = QWidget()
+        nresp_layout = QGridLayout()
+        qnresp.setLayout(nresp_layout)
+        qtabs.addTab(qnresp, 'NRESP')
+
 #--------
 # Menubar
 #--------
@@ -109,9 +115,9 @@ class REAC_GUI(QMainWindow):
         menubar.addMenu(helpMenu)
 
         fmap = {'reac': self.reactivity, 'csec': self.cross_section, 'kine': self.scatt_kine, \
-                'spec': self.spectra, 'los': self.los, 'exit': sys.exit}
+                'spec': self.spectra, 'los': self.los, 'nresp': self.nresp, 'exit': sys.exit}
         qlbl = {'reac': '&Reactivity', 'csec': '&Cross-section', 'kine': '&Kinematics', \
-                'spec': '&Spectra', 'los': '&Line-of-Sight', 'exit': 'Exit'}
+                'spec': '&Spectra', 'los': '&Line-of-Sight', 'nresp': '&NRESP', 'exit': 'Exit'}
         Action = {}
         for key, lbl in qlbl.items():
             Action = QAction(lbl, fileMenu)
@@ -205,7 +211,14 @@ class REAC_GUI(QMainWindow):
         cb = ['writeLOS']
         self.fill_layout(los_layout, 'detector', entries=entries, checkbuts=cb)
 
-        
+#---------
+# NRESP
+#---------
+
+        entries = ['f_detector', 'f_in_light', 'nmc', 'En_wid_frac', 'Ebin_MeVee']
+        combos = {'distr': ['gauss', 'mono']}
+        self.fill_layout(nresp_layout, 'nresp', entries=entries, combos=combos)
+
 #-----------
 # GUI layout
 #-----------
@@ -251,12 +264,15 @@ class REAC_GUI(QMainWindow):
             jrow += 1
 
         for key, combs in combos.items():
+            qlbl = QLabel(key)
+            qlbl.setFixedWidth(lbl_wid)
             self.gui[node][key] = QComboBox()
             for comb in combs:
                 self.gui[node][key].addItem(comb.strip())
             index = self.gui[node][key].findText(self.setup_init[node][key].strip())
             self.gui[node][key].setCurrentIndex(index)
-            layout.addWidget(self.gui[node][key], jrow, col_shift)
+            layout.addWidget(qlbl               , jrow, col_shift)
+            layout.addWidget(self.gui[node][key], jrow, col_shift+1)
             jrow += 1
 
         layout.setRowStretch(layout.rowCount(), 1)
@@ -446,6 +462,17 @@ class REAC_GUI(QMainWindow):
 # Write output
         if geo['writeLOS']:
             dlos.writeLOS()
+
+
+    def nresp(self):
+
+        logger.info('Starting NRESP calculation')
+        nresp_set = self.get_gui_tab('nresp')
+        nEn = 17
+        En_in_MeV = np.linspace(2, 18, nEn)
+        nrsp = nresp.NRESP(En_in_MeV, nresp_set)
+        nrsp.plotResponse(E_MeV=16.)
+        plt.show()
 
 
 if __name__ == '__main__':

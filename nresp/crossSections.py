@@ -2,13 +2,13 @@ import os, json, logging
 import numpy as np
 from scipy.interpolate import interp1d, RectBivariateSpline
 import matplotlib.pylab as plt
-from settings import flt_typ, nrespDir
+from nresp.settings import nrespDir
 
 logger = logging.getLogger('nresp.cs')
 logger.setLevel(level=logging.DEBUG)
 
 crossDir='%s/cross-sections' %nrespDir
-
+flt_typ = np.float64
 
 class crossSections:
 

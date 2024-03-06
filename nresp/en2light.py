@@ -4,10 +4,12 @@ from scipy.linalg import norm
 from scipy.interpolate import interp1d
 import numba as nb
 
-import settings, crossSections
+from nresp import crossSections
 
 logger = logging.getLogger('nresp.en2light')
 logger.setLevel(level=logging.DEBUG)
+
+nrespDir = os.path.dirname(os.path.realpath(__file__))
 
 # Measure CPU time for several methods
 
@@ -19,23 +21,17 @@ PI2 = 2.*np.pi
 CS = crossSections.crossSections()
 dE = (CS.Egrid[-1] - CS.Egrid[0])/float(len(CS.Egrid) - 1)
 
-flt_typ = settings.flt_typ
-int_typ = settings.int_typ
+flt_typ = np.float64
+int_typ = np.int32
 
 mediaCross = np.array([3, 2, 2, 0, 2, 1], dtype=int_typ)
 
-Egrid, det_light = np.loadtxt(settings.f_in_light, skiprows=1, unpack=True)
-light_int = interp1d(Egrid, det_light, assume_sorted=True, fill_value='extrapolate')
-
-f_mass = '%s/inc/nucleiMassMeV.json' %settings.nrespDir
+f_mass = '%s/inc/nucleiMassMeV.json' %nrespDir
 with open(f_mass, 'r') as fjson:
     massMeV = json.load(fjson)
 
-with open(settings.f_detector, 'r') as fjson:
-    detector = json.load(fjson)
-
-with open(settings.f_poly, 'r') as fjson:
-    poly = json.load(fjson)
+poly = {"DLT0": 0.0, "DLT1": 0.0, "FLT1": 0.0277, "FLT2": 1.749, "ENAL1": 6.76,
+    "GLT0": -0.6366, "GLT1": 0.21, "GLT2": 0.0, "RLT1": 0.01, "SLT1": 0.0097}
 
 
 @nb.njit
@@ -75,13 +71,9 @@ def reactionType(ZUU, jEne, reac_list):
     return None
 
 
-def reactionHC(MediumID, En_in, SH, SC, rnd):
+def reactionHC(En_in, alpha_sh, SC, rnd):
     '''Throwing dices for the reaction in a C+H material'''
 
-    if MediumID == 0:
-        alpha_sh = detector['alpha_sc']*SH #XNH/XNC
-    else:
-        alpha_sh = detector['alpha_lg']*SH #XNHL/XNCL
     ZUU = rnd*(alpha_sh + SC) - alpha_sh
     if ZUU < 0.:
         return 'H(N,N)H'
@@ -91,7 +83,7 @@ def reactionHC(MediumID, En_in, SH, SC, rnd):
         "12C(N,A)9BE'->N+3A", "12C(N,N')3A", "12C(N,P)12B", "12C(N,D)11B"])
 
 
-def photo_out(elementID, En_in, zr_dl):
+def photo_out(elementID, En_in, zr_dl, Egrid, light_int):
     '''Light yield for an arbitrary element'''
 
     if zr_dl < 0:
@@ -122,11 +114,11 @@ def photo_out(elementID, En_in, zr_dl):
     return photo
 
 
-def photo_B8to2alpha(EA1, En_in, CX1, CXS, dEnucl, rnd):
+def photo_B8to2alpha(EA1, En_in, CX1, CXS, dEnucl, rnd, Egrid, light_int, mB8_MeV, mHe_MeV):
     '''Light yield of B->2alpha reactions'''
 
     CTCM = 2.*rnd[0] - 1.
-    ctheta, cthetar, enr_loc, ENE = kinema(massMeV['B8'], 0., massMeV['He'], dEnucl, CTCM, En_in)
+    ctheta, cthetar, enr_loc, ENE = kinema(mB8_MeV, 0., mHe_MeV, dEnucl, CTCM, En_in)
     PHI2 = PI2*rnd[1]
     PHI3 = PHI2 + np.pi
     CX2 = scatteringDirection(CXS, ctheta , PHI2)
@@ -156,7 +148,7 @@ def photo_B8to2alpha(EA1, En_in, CX1, CXS, dEnucl, rnd):
 
     phot_B8to2alpha = 0.
     for j in range(3):
-        phot_B8to2alpha += photo_out(elementIndex[j], energy[j], 1.)
+        phot_B8to2alpha += photo_out(elementIndex[j], energy[j], 1., Egrid, light_int)
 
     return phot_B8to2alpha
 
@@ -244,16 +236,14 @@ CrossPathLen     path length to a crossing point(WEG)'''
     tcyl1 = time.time()
     W1, W2 = cylinder_crossing(RG , D  , 0., X0, CX) # Outer cylinder
     count_cyl += 1
-    tcyl2 = time.time()
-    time_cyl += tcyl2 - tcyl1
+    time_cyl += time.time() - tcyl1
     if W2 == 0.: # No intersections at all
         return None, None
-    tcyl3 = time.time()
+    tcyl2 = time.time()
     W3, W4 = cylinder_crossing(RSZ, DSZ, DL, X0, CX) # Scintillator
     W5, W6 = cylinder_crossing(RL , DL , 0., X0, CX) # Light guide
     count_cyl += 2
-    tcyl4 = time.time()
-    time_cyl += tcyl4 - tcyl3
+    time_cyl += time.time() - tcyl2
 
 # Mapping paths and medium
     pathl = np.array([W1, W2, W3, W4, W5, W6], dtype=flt_typ)
@@ -327,11 +317,17 @@ def kinema(M1, M2, M3, dEnucl, CTCM, T1LAB):
     return ctheta, cthetar, T4LAB, T3LAB
 
 
-def En2light(E_phsdim):
+def En2light(tuple_in):
 
-    En_in_MeV, phs_max = E_phsdim
-    nmc = int(settings.nmc)
-    En_wid = settings.En_wid_frac*En_in_MeV
+    En_in_MeV, phs_max, nresp_set = tuple_in
+    Egrid, det_light = np.loadtxt(nresp_set['f_in_light'], skiprows=1, unpack=True)
+    light_int = interp1d(Egrid, det_light, assume_sorted=True, fill_value='extrapolate')
+
+    with open(nresp_set['f_detector'], 'r') as fjson:
+        detector = json.load(fjson)
+
+    nmc = int(nresp_set['nmc'])
+    En_wid = nresp_set['En_wid_frac']*En_in_MeV
 
     time_reac = {}
     for reac in CS.reacTotUse:
@@ -466,7 +462,7 @@ def En2light(E_phsdim):
         LEVEL0 = 0
         ENE = En_in_MeV # MeV
 
-        if settings.distr == 'gauss':
+        if nresp_set['distr'] == 'gauss':
             if jg_rnd > ng_rand1:
                 logger.debug('Re-random gauss')
                 jg_rnd = 0
@@ -554,8 +550,12 @@ def En2light(E_phsdim):
 #---------------------
 
                 reac_type = None
+                if MediumID == 0:
+                    alpha_sh = detector['alpha_sc']*SH #XNH/XNC
+                else:
+                    alpha_sh = detector['alpha_lg']*SH #XNHL/XNCL
                 while reac_type is None:
-                    reac_type = reactionHC(MediumID, ENE, SH, SC, rand[jrand])
+                    reac_type = reactionHC(ENE, alpha_sh, SC, rand[jrand])
                     jrand += 1
 
                 if n_scat == 1: # Label first neutron reaction
@@ -583,7 +583,7 @@ def En2light(E_phsdim):
                             BR = 1.507E-3*ENR
                         else:
                             BR = 2.0457E-3*(ENR + 0.15045)**1.8194
-                        LightYieldChain += photo_out(1, ENR, zr_dl)
+                        LightYieldChain += photo_out(1, ENR, zr_dl, Egrid, light_int)
                         rsz_sq_xr = rsz_sq - XR[0]**2 - XR[1]**2
                         if zr_dl <= BR or detector['DSZ'] - zr_dl <= BR or rsz_sq_xr <= 2.*detector['RSZ']*BR:
                             PHIR = PHI - np.pi
@@ -612,7 +612,7 @@ def En2light(E_phsdim):
                                     ENT = -0.150 + (PATH*488.83)**0.5496
                                 else:
                                     ENT = 663.57*PATH
-                                LightYieldChain -= photo_out(1, ENT, zr_dl)
+                                LightYieldChain -= photo_out(1, ENT, zr_dl, Egrid, light_int)
                     time_reac[reac_type] += time.time() - tbeg
 
                 elif reac_type in ('12C(N,N)12C', "12C(N,N')12C"):
@@ -620,7 +620,7 @@ def En2light(E_phsdim):
                     CTCM = CS.cosInterpReac2d(reac_type, ENE, Frnd) # elastic
                     dEnucl = CS.crSec_d[reac_type]['dEnucl']
                     ctheta, cthetar, ENR, ENE = kinema(massMeV['neutron'], massMeV['C12'], massMeV['neutron'], dEnucl, CTCM, ENE)
-                    LightYieldChain += photo_out(5, ENR, zr_dl)
+                    LightYieldChain += photo_out(5, ENR, zr_dl, Egrid, light_int)
                     time_reac[reac_type] += time.time() - tbeg
 
                 elif reac_type == '12C(N,A)9BE':
@@ -629,7 +629,7 @@ def En2light(E_phsdim):
                         CTCM = CS.cosInterpReac2d(reac_type, ENE, Frnd)
                         dEnucl = CS.crSec_d[reac_type]['dEnucl']
                         ctheta, cthetar, ENR, ENE = kinema(massMeV['neutron'], massMeV['C12'], massMeV['He'], dEnucl, CTCM, ENE)
-                        LightYieldChain += photo_out(3, ENE, zr_dl) + photo_out(4, ENR, zr_dl)
+                        LightYieldChain += photo_out(3, ENE, zr_dl, Egrid, light_int) + photo_out(4, ENR, zr_dl, Egrid, light_int)
                     time_reac[reac_type] += time.time() - tbeg
                     break # reac. chain
 
@@ -652,7 +652,7 @@ def En2light(E_phsdim):
                         dEnucl = 0.095
                         if n_scat == 1:
                             LEVEL0 = 10
-                        LightYieldChain += photo_B8to2alpha(EA1, ENR, CX1, CXS, dEnucl, rand[jrand:jrand+2])
+                        LightYieldChain += photo_B8to2alpha(EA1, ENR, CX1, CXS, dEnucl, rand[jrand:jrand+2], Egrid, light_int, massMeV['B8'], massMeV['He'])
                         jrand += 2
                     time_reac[reac_type] += time.time() - tbeg
 
@@ -695,7 +695,7 @@ def En2light(E_phsdim):
                         dEnucl = 0.095
                         if LEVEL > 1 and LEX <= CS.alphas3['3MeV'][LEVEL]:
                             dEnucl += 3.
-                        LightYieldChain += photo_B8to2alpha(EA1, ENR, CX1, CXS, dEnucl, rand[jrand: jrand+2])
+                        LightYieldChain += photo_B8to2alpha(EA1, ENR, CX1, CXS, dEnucl, rand[jrand: jrand+2], Egrid, light_int, massMeV['B8'], massMeV['He'])
                         jrand += 2
                     time_reac[reac_type] += time.time() - tbeg
 
@@ -705,7 +705,7 @@ def En2light(E_phsdim):
                         CTCM = 2.*Frnd - 1.
                         dEnucl = CS.crSec_d[reac_type]['dEnucl']
                         ctheta, cthetar, ENR, ENE = kinema(massMeV['neutron'], massMeV['C12'], massMeV['H'], dEnucl, CTCM, ENE)
-                        LightYieldChain += photo_out(1, ENE, zr_dl) + photo_out(5, ENR, zr_dl)
+                        LightYieldChain += photo_out(1, ENE, zr_dl, Egrid, light_int) + photo_out(5, ENR, zr_dl, Egrid, light_int)
                     time_reac[reac_type] += time.time() - tbeg
                     break # reac_chain
 
@@ -715,7 +715,7 @@ def En2light(E_phsdim):
                         CTCM = 2.*Frnd - 1.
                         dEnucl = CS.crSec_d[reac_type]['dEnucl']
                         ctheta, cthetar, ENR, ENE = kinema(massMeV['neutron'], massMeV['C12'], massMeV['D'], dEnucl, CTCM, ENE)
-                        LightYieldChain += photo_out(2, ENE, zr_dl) + photo_out(5, ENR, zr_dl)
+                        LightYieldChain += photo_out(2, ENE, zr_dl, Egrid, light_int) + photo_out(5, ENR, zr_dl, Egrid, light_int)
                     time_reac[reac_type] += time.time() - tbeg
                     break # reac_chain
 
@@ -746,7 +746,7 @@ def En2light(E_phsdim):
 # End reaction chain
 
         if weight >= 2E-5 and LightYieldChain > 0.:
-            phsBin = int(LightYieldChain/settings.Ebin_MeVee)
+            phsBin = int(LightYieldChain/nresp_set['Ebin_MeVee'])
             light_output[first_reac_type, phsBin] += weight
             count_reac  [first_reac_type] += 1 # count
             phs_dim_rea [first_reac_type] = max(phsBin, phs_dim_rea[first_reac_type])
