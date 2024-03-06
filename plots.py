@@ -28,13 +28,13 @@ lwid = 2.5
 class plotWindow(QWidget):
 
 
-    def __init__(self):
+    def __init__(self, geom=(80, 30, 900, 680)):
 
         if sys.version_info[0] == 3:
             super().__init__()
         else:
             super(QWidget, self).__init__()
-        self.setGeometry(QRect(80, 30, 900, 680))
+        self.setGeometry(QRect(*geom))
         self.tabs = QTabWidget(self)
         self.tabs.setStyleSheet("QTabBar::tab { width: 165 }")
         self.setWindowTitle('Nuclear reactions properties')
@@ -57,9 +57,11 @@ class plotWindow(QWidget):
         self.tabs.setCurrentIndex(self.tabs.count()-1)
 
 
-def fig_reactivity(reac_d, Ti_keV, color='#d0d0d0'):
+def fig_reactivity(reac_d, Ti_keV, color='#d0d0d0', figSize=None):
 
-    fig_reac = plt.figure('Reac', fig_size, dpi=100, facecolor=color)
+    if figSize is None:
+        figSize = fig_size
+    fig_reac = plt.figure('Reac', figSize, dpi=100, facecolor=color)
     plt.cla()
     for lbl, reac in reac_d.items():
 #        if lbl[:3] != 'D(D':

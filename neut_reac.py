@@ -11,9 +11,11 @@ try:
     from PyQt5.QtGui import QPixmap, QIcon, QIntValidator, QDoubleValidator
     from PyQt5.QtCore import Qt, QRect, QSize
     qt5 = True
+    from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 except:
     from PyQt4.QtCore import Qt, QRect, QSize, QIntValidator, QDoubleValidator
     from PyQt4.QtGui import QPixmap, QIcon, QMainWindow, QWidget, QApplication, QGridLayout, QMenu, QAction, QLabel, QPushButton, QLineEdit, QCheckBox, QFileDialog, QRadioButton, QButtonGroup, QTabWidget, QVBoxLayout, QComboBox
+    from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
     qt5 = False
 
 import numpy as np
@@ -215,7 +217,7 @@ class REAC_GUI(QMainWindow):
 # NRESP
 #---------
 
-        entries = ['f_detector', 'f_in_light', 'nmc', 'En_wid_frac', 'Ebin_MeVee']
+        entries = ['Energy array', 'f_detector', 'f_in_light', 'nmc', 'En_wid_frac', 'Ebin_MeVee', 'Energy for PHS plot']
         combos = {'distr': ['gauss', 'mono']}
         self.fill_layout(nresp_layout, 'nresp', entries=entries, combos=combos)
 
@@ -467,12 +469,29 @@ class REAC_GUI(QMainWindow):
     def nresp(self):
 
         logger.info('Starting NRESP calculation')
+
         nresp_set = self.get_gui_tab('nresp')
         nEn = 17
-        En_in_MeV = np.linspace(2, 18, nEn)
-        nrsp = nresp.NRESP(En_in_MeV, nresp_set)
-        nrsp.plotResponse(E_MeV=16.)
-        plt.show()
+        reComp = False
+        if not hasattr(self, 'nresp_set'):
+            reComp = True
+        else:
+            for key, val in self.nresp_set.items():
+                if key != 'Energy for PHS plot':
+                    if nresp_set[key] != val:
+                        reComp = True
+                        break
+        if reComp:
+            nrsp = nresp.NRESP(nresp_set)
+        else:
+            nrsp = self.nrsp
+        fig = nrsp.plotResponse(E_MeV=nresp_set['Energy for PHS plot'])
+        if not hasattr(self, 'wid'):
+            self.wid = plots.plotWindow()
+        self.wid.addPlot('NRESP', fig)
+        self.wid.show()
+        self.nresp_set = {key: val for key, val in nresp_set.items()}
+        self.nrsp = nrsp
 
 
 if __name__ == '__main__':

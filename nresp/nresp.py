@@ -33,11 +33,11 @@ int_typ = np.int32
 class NRESP:
 
 
-    def __init__(self, En_in_MeV, nresp_set):
+    def __init__(self, nresp_set):
 
-        self.reac_names = CS.reacTotUse
+        self.reac_names = [x for x in CS.reacTotUse]
         self.reac_names.append('light-guide')
-        self.En_MeV = En_in_MeV
+        self.En_MeV = eval(nresp_set['Energy array'])
         self.nresp_set = nresp_set
         self.nEn = len(self.En_MeV)
         jmax = np.argmax(self.En_MeV)
@@ -69,7 +69,6 @@ class NRESP:
         self.phs_dim_pp3  = np.zeros((self.nEn, CS.max_level), dtype=int_typ)
         self.pp3as_output = np.zeros((self.nEn, CS.max_level, self.phs_max), dtype=flt_typ)
         self.light_output = np.zeros((self.nEn, self.n_react, self.phs_max), dtype=flt_typ)
-        print(self.nEn, self.n_react, x[0].shape)
         for jE, x in enumerate(out):
             self.count_reac  [jE] = x[0]
             self.count_pp3as [jE] = x[1]
@@ -112,17 +111,18 @@ class NRESP:
         jEn = np.argmin(np.abs(self.En_MeV - E_MeV))
         n_react = self.light_output.shape[1]
 
-        plt.figure('Reactions', (14, 8))
-        plt.subplot(1, 2, 1)
+        fig = plt.figure('NRESP reactions', (8.8, 5.9))
+        ax1 = fig.add_subplot(1, 2, 1)
         for jreact in range(n_react):
-            plt.plot(self.Ephs_MeVee, self.light_output[jEn, jreact], label=self.reac_names[jreact])
-        plt.ylim([0., 0.004])
-        plt.legend()
+            ax1.plot(self.Ephs_MeVee, self.light_output[jEn, jreact], label=self.reac_names[jreact])
+        ax1.set_ylim([0., 0.004])
+        ax1.legend()
 
-        plt.subplot(1, 2, 2)
+        ax2 = fig.add_subplot(1, 2, 2)
         resp = np.sum(self.light_output, axis=1)
-        plt.plot(self.Ephs_MeVee, resp[jEn])
-        plt.ylim([0., 0.02])
+        ax2.plot(self.Ephs_MeVee, resp[jEn])
+        ax2.set_ylim([0., 0.02])
+        return fig
 
 
 if __name__ == '__main__':
