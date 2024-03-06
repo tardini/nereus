@@ -9,12 +9,12 @@
  
     "detector":
         {"disk_thick": 0.008, "cell_radius": 0.004, "coll_diam": 8.8e-2, "d_det_coll": 7.16, "det_radius": 0.0254, "tilt": 0.0,
-	 "tan_radius": 0.4, "y_det": -13.32, "z_det": 0.1, "Rmaj": 1.65, "r_chamb": 0.6, "label": "aug_BC501A", "writeLOS": false},
+	 "tan_radius": 0.4, "y_det": -13.32, "z_det": 0.1, "Rmaj": 1.65, "r_chamb": 0.6, "label": "aug_BC501A", "Write LOS": false},
 
     "nresp": {
 	"Energy array": "np.linspace(2, 18, 17)",
 	"f_detector": "nresp/inc/detectorAUG.json",
 	"f_in_light": "nresp/inc/light_func_jet.dat",
 	"nmc": 100000, "distr": "gauss", "En_wid_frac": 0.01,
-	"Ebin_MeVee": 0.005, "Energy for PHS plot": 16.0}
+	"Ebin_MeVee": 0.005, "Energy for PHS plot": 16.0, "Write nresp": false}
 }

@@ -210,7 +210,7 @@ class REAC_GUI(QMainWindow):
 
         entries = ['disk_thick', 'cell_radius', 'coll_diam', 'd_det_coll', 'det_radius', 'tilt',
             'tan_radius', 'y_det', 'z_det', 'Rmaj', 'r_chamb', 'label']
-        cb = ['writeLOS']
+        cb = ['Write LOS']
         self.fill_layout(los_layout, 'detector', entries=entries, checkbuts=cb)
 
 #---------
@@ -219,7 +219,8 @@ class REAC_GUI(QMainWindow):
 
         entries = ['Energy array', 'f_detector', 'f_in_light', 'nmc', 'En_wid_frac', 'Ebin_MeVee', 'Energy for PHS plot']
         combos = {'distr': ['gauss', 'mono']}
-        self.fill_layout(nresp_layout, 'nresp', entries=entries, combos=combos)
+        cb = ['Write nresp']
+        self.fill_layout(nresp_layout, 'nresp', entries=entries, combos=combos, checkbuts=cb)
 
 #-----------
 # GUI layout
@@ -462,13 +463,11 @@ class REAC_GUI(QMainWindow):
         self.wid.show()
 
 # Write output
-        if geo['writeLOS']:
+        if geo['Write LOS']:
             dlos.writeLOS()
 
 
     def nresp(self):
-
-        logger.info('Starting NRESP calculation')
 
         nresp_set = self.get_gui_tab('nresp')
         nEn = 17
@@ -477,7 +476,7 @@ class REAC_GUI(QMainWindow):
             reComp = True
         else:
             for key, val in self.nresp_set.items():
-                if key != 'Energy for PHS plot':
+                if key not in ('Energy for PHS plot', 'Write nresp'):
                     if nresp_set[key] != val:
                         reComp = True
                         break
@@ -485,13 +484,17 @@ class REAC_GUI(QMainWindow):
             nrsp = nresp.NRESP(nresp_set)
         else:
             nrsp = self.nrsp
-        fig = nrsp.plotResponse(E_MeV=nresp_set['Energy for PHS plot'])
+        fig_nr = nrsp.plotResponse(E_MeV=nresp_set['Energy for PHS plot'])
         if not hasattr(self, 'wid'):
             self.wid = plots.plotWindow()
-        self.wid.addPlot('NRESP', fig)
+        self.wid.addPlot('NRESP', fig_nr)
         self.wid.show()
         self.nresp_set = {key: val for key, val in nresp_set.items()}
         self.nrsp = nrsp
+
+# Write output
+        if nresp_set['Write nresp']:
+            nrsp.to_nresp()
 
 
 if __name__ == '__main__':
