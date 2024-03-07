@@ -113,15 +113,17 @@ class NRESP:
         n_react = self.light_output.shape[1]
 
         fig = plt.figure('NRESP reactions', (8.8, 5.9))
+        fig.clf()
+
         fig.text(0.5, 0.95, r'E$_n$=%6.3f MeV' %self.En_MeV[jEn], ha='center')
         ax1 = fig.add_subplot(1, 2, 1)
         for jreact in range(n_react):
             ax1.plot(self.Ephs_MeVee, self.light_output[jEn, jreact], label=self.reac_names[jreact])
-        ax1.set_ylim([0., 1.])
+        ax1.set_ylim([0., 20./E_MeV])
         ax1.legend()
 
         ax2 = fig.add_subplot(1, 2, 2)
         resp = np.sum(self.light_output, axis=1)
         ax2.plot(self.Ephs_MeVee, resp[jEn])
-        ax2.set_ylim([0., 5.])
+        ax2.set_ylim([0., 100./E_MeV])
         return fig
