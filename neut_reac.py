@@ -219,7 +219,7 @@ class REAC_GUI(QMainWindow):
 
         entries = ['Energy array', 'f_detector', 'f_in_light', 'nmc', 'En_wid_frac', 'Ebin_MeVee', 'Energy for PHS plot']
         combos = {'distr': ['gauss', 'mono']}
-        cb = ['Write nresp']
+        cb = ['Write nresp', 'MultiProcess']
         self.fill_layout(nresp_layout, 'nresp', entries=entries, combos=combos, checkbuts=cb)
 
 #-----------
@@ -481,7 +481,7 @@ class REAC_GUI(QMainWindow):
                         reComp = True
                         break
         if reComp:
-            nrsp = nresp.NRESP(nresp_set)
+            nrsp = nresp.NRESP(nresp_set, parallel=nresp_set['MultiProcess'])
         else:
             nrsp = self.nrsp
         fig_nr = nrsp.plotResponse(E_MeV=nresp_set['Energy for PHS plot'])

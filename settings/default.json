@@ -16,5 +16,6 @@
 	"f_detector": "nresp/inc/detectorAUG.json",
 	"f_in_light": "nresp/inc/light_func_jet.dat",
 	"nmc": 100000, "distr": "gauss", "En_wid_frac": 0.01,
-	"Ebin_MeVee": 0.005, "Energy for PHS plot": 16.0, "Write nresp": false}
+	"Ebin_MeVee": 0.005, "Energy for PHS plot": 16.0,
+	"Write nresp": false, "MultiProcess": true}
 }
