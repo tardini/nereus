@@ -34,7 +34,7 @@ int_typ = np.int32
 class NRESP:
 
 
-    def __init__(self, nresp_set):
+    def __init__(self, nresp_set, parallel=True):
 
         self.reac_names = [x for x in CS.reacTotUse]
         self.reac_names.append('light-guide')
@@ -52,10 +52,13 @@ class NRESP:
         self.EphsB_MeVee = self.nresp_set['Ebin_MeVee']*np.arange(self.phs_max + 1)
         self.Ephs_MeVee = 0.5*(self.EphsB_MeVee[1:] + self.EphsB_MeVee[:-1])
 
-        self.run()
+        if parallel:
+            self.run_multi()
+        else:
+            self.run_serial()
 
 
-    def run(self):
+    def run_multi(self):
 
         timeout_pool = int(self.nresp_set['nmc']/1e3)
         pool = Pool(cpu_count())
@@ -77,6 +80,22 @@ class NRESP:
             self.phs_dim_pp3 [jE] = x[3]
             self.light_output[jE] = x[4]
             self.pp3as_output[jE] = x[5]
+        self.phs_dim_rea += 1
+        self.phs_dim_pp3 += 1
+        self.RespMat = np.sum(self.light_output, axis=1)
+
+
+    def run_serial(self):
+
+        self.count_reac   = np.zeros((self.nEn, self.n_react), dtype=int_typ)
+        self.phs_dim_rea  = np.zeros((self.nEn, self.n_react), dtype=int_typ)
+        self.count_pp3as  = np.zeros((self.nEn, CS.max_level), dtype=int_typ)
+        self.phs_dim_pp3  = np.zeros((self.nEn, CS.max_level), dtype=int_typ)
+        self.pp3as_output = np.zeros((self.nEn, CS.max_level, self.phs_max), dtype=flt_typ)
+        self.light_output = np.zeros((self.nEn, self.n_react, self.phs_max), dtype=flt_typ)
+        for jE, EMeV in enumerate(self.En_MeV):
+            self.count_reac[jE], self.count_pp3as[jE], self.phs_dim_rea[jE], self.phs_dim_pp3[jE], \
+                self.light_output[jE], self.pp3as_output[jE] = En2light((EMeV, self.phs_max, self.nresp_set))
         self.phs_dim_rea += 1
         self.phs_dim_pp3 += 1
         self.RespMat = np.sum(self.light_output, axis=1)
