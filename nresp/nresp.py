@@ -38,7 +38,7 @@ class NRESP:
 
         self.reac_names = [x for x in CS.reacTotUse]
         self.reac_names.append('light-guide')
-        self.En_MeV = eval(nresp_set['Energy array'])
+        self.En_MeV = np.atleast_1d(eval(nresp_set['Energy array']))
         self.nresp_set = nresp_set
         self.nEn = len(self.En_MeV)
         jmax = np.argmax(self.En_MeV)
