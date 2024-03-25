@@ -2,7 +2,7 @@ import logging
 import numpy as np
 import matplotlib.pylab as plt
 
-logger = logging.getLogger('rekin.los')
+logger = logging.getLogger('neutReac.los')
 logger.setLevel(logging.DEBUG)
 
 
@@ -60,30 +60,31 @@ class XYLOS:
 class DETECTOR_LOS:
 
     def __init__(self, geo):
-        self.run(geo)
+        self.geo = geo
+        self.run()
 
-    def run(self, geo):
+    def run(self):
 
         los_d = {}
-        los_d['x0']    = -geo['y_det']
+        los_d['x0']    = -self.geo['y_det']
         los_d['y0']    = 0.001
-        los_d['z0']    = geo['z_det']
+        los_d['z0']    = self.geo['z_det']
         los_d['xend']  = 0 # 1 plasma crossing
-#        los_d['xend']  = geo['y_det'] # 2 plasma crossings
-        los_d['theta'] = np.radians(geo['tilt'])
-        los_d['phi']   = -np.arctan2(geo['tan_radius'], geo['y_det'])
+#        los_d['xend']  = self.geo['y_det'] # 2 plasma crossings
+        los_d['theta'] = np.radians(self.geo['tilt'])
+        los_d['phi']   = -np.arctan2(self.geo['tan_radius'], self.geo['y_det'])
 
         ctilt = np.cos(los_d['theta'])
-        dy = geo['disk_thick']*ctilt
-        ndisks = int(-2*geo['y_det']/dy)
+        dy = self.geo['disk_thick']*ctilt
+        ndisks = int(-2*self.geo['y_det']/dy)
 
         self.det = DETECTOR()
         self.det.los = PHILOS(los_d, npoints=ndisks)
 
 # Get separatrix {R,z}
 
-        rmin = geo['Rmaj']  - geo['r_chamb'] 
-        rmax = geo['Rmaj']  + geo['r_chamb'] 
+        rmin = self.geo['Rmaj']  - self.geo['r_chamb'] 
+        rmax = self.geo['Rmaj']  + self.geo['r_chamb'] 
 
 # Restrict to LOS inside the plasma
 
@@ -96,16 +97,16 @@ class DETECTOR_LOS:
 
 # Write ASCII file for LOS, used in the spectrum evaluation
 
-        self.det.pos = (geo['tan_radius'], geo['y_det'], geo['z_det'])
+        self.det.pos = (self.geo['tan_radius'], self.geo['y_det'], self.geo['z_det'])
         det_dist = np.hypot(self.det.los.y - self.det.pos[1], self.det.los.z - self.det.pos[2])
-        ctilt = np.cos(np.radians(geo['tilt']))
-        stilt = np.sin(np.radians(geo['tilt']))
-        dy = geo['disk_thick']*ctilt
-        coll_rad = 0.5*geo['coll_diam']
-        dist_corr = geo['d_det_coll']/(1. + geo['det_radius']/coll_rad) # Shifting the cone vertex to the point where lines (det-left - coll-right, det-right - coll-left) cross
+        ctilt = np.cos(np.radians(self.geo['tilt']))
+        stilt = np.sin(np.radians(self.geo['tilt']))
+        dy = self.geo['disk_thick']*ctilt
+        coll_rad = 0.5*self.geo['coll_diam']
+        dist_corr = self.geo['d_det_coll']/(1. + self.geo['det_radius']/coll_rad) # Shifting the cone vertex to the point where lines (det-left - coll-right, det-right - coll-left) cross
         self.det.tan_cone_aper = coll_rad/dist_corr
 #        logger.debug(coll_rad, dist_corr, tan_cone_aper)
-        offset = geo['d_det_coll'] - dist_corr # scalar, r2
+        offset = self.geo['d_det_coll'] - dist_corr # scalar, r2
         disk_radius = (det_dist - offset)*self.det.tan_cone_aper # array on discretised LoS
         n_disks = len(self.det.los.y)
 
@@ -123,7 +124,7 @@ class DETECTOR_LOS:
         self.cell.vol   = []
 
         for jdisk in range(n_disks):
-            n_circles = int(0.5 + disk_radius[jdisk]/geo['cell_radius'])
+            n_circles = int(0.5 + disk_radius[jdisk]/self.geo['cell_radius'])
             delta_radius = disk_radius[jdisk]/float(n_circles)
 
 # radius, alpha in the 'middle' of the sector
@@ -133,7 +134,7 @@ class DETECTOR_LOS:
 
             radius = (0.5 + np.arange(n_circles))*delta_radius
             radius[0] = 0.
-            omega_fac = np.pi * geo['det_radius']**2/det_dist[jdisk]**3
+            omega_fac = np.pi * self.geo['det_radius']**2/det_dist[jdisk]**3
             cell_detDist = np.hypot(det_dist[jdisk], radius)
             omegaCircle = omega_fac * cell_detDist
             for j_circle in range(n_circles):
@@ -160,9 +161,8 @@ class DETECTOR_LOS:
         n_cells = len(self.cell.vol)
         n_disks = len(self.det.los.y)
         cone_aper = np.degrees(np.arctan(self.det.tan_cone_aper))
-        geo = self.get_gui_tab('detector')
-        ctilt = np.cos(np.radians(geo['tilt']))
-        dy = geo['disk_thick']*ctilt
+        ctilt = np.cos(np.radians(self.geo['tilt']))
+        dy = self.geo['disk_thick']*ctilt
 
         header = \
            'LOS\n' + \
@@ -172,13 +172,13 @@ class DETECTOR_LOS:
            '   z2 = %9.4f m\n'  % self.det.los.z[-1] + \
            'Detector:\n' + \
            '   Position [m] x, y, z: %9.4f, %9.4f, %9.4f\n' %self.det.pos + \
-           '   Radius = %9.4f m\n' % geo['det_radius'] + \
+           '   Radius = %9.4f m\n' % self.geo['det_radius'] + \
            '   Collimation angle = %9.4f deg\n' % cone_aper + \
            'Disks:\n' + \
            '   Thickness = %9.4f m\n' % dy + \
            '   # disks = %5d\n' % n_disks + \
            'Cells:\n' + \
-           '   Radius = %9.4f m\n' % geo['cell_radius'] + \
+           '   Radius = %9.4f m\n' % self.geo['cell_radius'] + \
            '   # cells = %d\n' %n_cells + \
 """
    (x,y,x) cell cartensian coordinates [m]
@@ -187,7 +187,7 @@ class DETECTOR_LOS:
 x             y             z             Omega         Vol
 """
 
-        los_file = '%s.los' %geo['label']
+        los_file = '%s.los' %self.geo['label']
 
         logger.info('Storing ASCII output, n_cells=%d', n_cells)
         np.savetxt(los_file, np.hstack((self.cell.x, self.cell.y, self.cell.z, self.cell.omega, self.cell.vol)).reshape(5, n_cells).T, header=header, fmt='%13.6E')
