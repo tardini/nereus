@@ -134,10 +134,9 @@ class nSpectrum:
             logger.info('Total neutron rate %12.4e N/s', rate_bt + rate_th + rate_bb)
 
 
-    def storeSpectra(self):
+    def storeSpectra(self, f_out='dress_client/output/Spectrum.dat'):
         '''Store ASCII output for DRESS Neutron Emission Spectra'''
 
-        f_out = 'Spectrum.dat'
         header = 'Eneut      Thermonucl. Beam-target Beam-beam'
         np.savetxt(f_out, np.c_[self.En, self.th, self.bt, self.bb], fmt='%11.4e', header=header)
         logger.info('Stored file %s', f_out)

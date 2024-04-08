@@ -10,7 +10,8 @@
         "Detector LoS": "dress_client/input/aug_BC501A.los",
         "ASCOT file": "dress_client/input/29795_3.0s_ascot.h5",
         "TRANSP plasma": "dress_client/input/36557D05.CDF",
-        "TRANSP fast ions": "dress_client/input/36557D05_fi_1.cdf"
+        "TRANSP fast ions": "dress_client/input/36557D05_fi_1.cdf",
+        "Output file": "dress_client/output/Spectrum.dat"
         },
  
     "detector":

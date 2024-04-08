@@ -200,7 +200,7 @@ class REAC_GUI(QMainWindow):
 # Spectra
 #--------
 
-        entries = ['TRANSP plasma', 'TRANSP fast ions', 'ASCOT file', 'Detector LoS', '#MonteCarlo']
+        entries = ['TRANSP plasma', 'TRANSP fast ions', 'ASCOT file', 'Detector LoS', '#MonteCarlo', 'Output file']
         combos = {'Code': ['TRANSP', 'ASCOT'], 'Spectrum': ['Total', 'Line-of-sight']}
         cb = ['Store spectra'] 
         self.fill_layout(spec_layout, 'spectrum', entries=entries, combos=combos, checkbuts=cb, ent_wid=360)
@@ -470,7 +470,7 @@ class REAC_GUI(QMainWindow):
 
 # Write output file
         if nes_d['Store spectra']:
-            nes.storeSpectra()
+            nes.storeSpectra(f_out=nes_d['Output file'])
 
 
     def los(self):
