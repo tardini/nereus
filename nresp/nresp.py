@@ -5,7 +5,8 @@ import numpy as np
 import matplotlib.pylab as plt
 from multiprocessing import Pool, cpu_count
 from nresp.en2light import En2light
-from nresp import crossSections, rw_for
+from nresp import crossSections
+import rw_for
 
 nrespDir = os.path.dirname(os.path.realpath(__file__))
 

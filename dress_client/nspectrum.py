@@ -1,9 +1,10 @@
-import logging
+import os, logging
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
 import matplotlib.patches as patches
 import dress
+import response
 from dress_client import fi_codes
 
 fmt = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s: %(message)s', '%H:%M:%S')
@@ -134,6 +135,28 @@ class nSpectrum:
             logger.info('Total neutron rate %12.4e N/s', rate_bt + rate_th + rate_bb)
 
 
+    def phs(self, f_resp='responses/rm_bg.cdf'):
+
+        resp = response.RESP()
+        fname, ext = os.path.splitext(f_resp)
+        if ext.lower() == '.cdf':
+            resp.from_cdf(f_resp)
+        else:
+            resp.from_hepro(f_resp)
+
+        En_MeV = 1e-3*self.En
+        nbins = len(resp.Ephs_MeVee)
+        self.phs = {}
+        self.phs['Elight_MeVee'] = resp.Ephs_MeVee
+
+        for reac in ('bt', 'bb', 'th'):
+            self.phs[reac] = np.zeros(nbins, dtype=flt)
+            for jEn, En in enumerate(En_MeV):
+                dist = (resp.En_MeV - En)**2
+                jclose = np.argmin(dist)
+                self.phs[reac] += self.__dict__[reac][jEn]*resp.RespMat[jclose, :]
+
+
     def storeSpectra(self, f_out='dress_client/output/Spectrum.dat'):
         '''Store ASCII output for DRESS Neutron Emission Spectra'''
 
@@ -204,10 +227,11 @@ class nSpectrum:
         '''Plot DRESS output Neutron Emission Spectra'''
 
         logger.info('Plotting LoS spectrum')
-        fig = plt.figure()
-        if hasattr(self, 'bt'):
-            plt.plot(self.En, self.bt, label='BT')
-            plt.plot(self.En, self.th, label='TH')
+        fig = plt.figure(figsize=(8.8, 5.9))
+
+        plt.subplot(1, 2, 1)
+        plt.plot(self.En, self.bt, label='BT')
+        plt.plot(self.En, self.th, label='TH')
         plt.plot(self.En, self.bb, label='BB')
         ymax = plt.gca().get_ylim()[1]
         plt.plot([2452, 2452], [0, 1.5*ymax], 'k-') # Reference d-d neutron energy
@@ -215,11 +239,23 @@ class nSpectrum:
         plt.xlabel('Neutron energy (keV)')
         plt.ylabel('Energy spectrum (neuts/keV/s)')
         if hasattr(self, 'inside'):
-            plt.title('Line-of-sight neutron emission spectrum')
+            plt.title('Line-of-sight Neutron Emission Spectrum')
         else:
-            plt.title('Total neutron emission spectrum')
+            plt.title('Total Neutron Emission Spectrum')
         plt.legend()
         plt.xlim(2000, 3000)
+
+        plt.subplot(1, 2, 2)
+        plt.plot(self.phs['Elight_MeVee'], self.phs['bt'], label='BT')
+        plt.plot(self.phs['Elight_MeVee'], self.phs['th'], label='TH')
+        plt.plot(self.phs['Elight_MeVee'], self.phs['bb'], label='BB')
+        plt.xlabel('Light equivalent energy (MeVee)')
+        plt.xlim(0, 2)
+        if hasattr(self, 'inside'):
+            plt.title('Line-of-sight Pulse Height Spectrum')
+        else:
+            plt.title('Total Pulse Height')
+
         return fig
         
 
