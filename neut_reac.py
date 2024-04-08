@@ -24,11 +24,11 @@ from mpl_toolkits.mplot3d import Axes3D
 from reactivities import *
 import calc_cross_section as cs
 import calc_kinematics as ck
-import calc_spectrum as spc
 import los
 import plots
 from reactions import reaction
 from nresp import nresp
+from dress_client import nspectrum
 
 os.environ['BROWSER'] = '/usr/bin/firefox'
 
@@ -200,9 +200,10 @@ class REAC_GUI(QMainWindow):
 # Spectra
 #--------
 
-        entries = ['dens', 'E1', 'E2', 'losx', 'losy', 'losz', 'n_sample']
-        combos = {'reac': reaction.keys()}
-        self.fill_layout(spec_layout, 'spectrum', entries=entries, combos=combos)
+        entries = ['TRANSP plasma', 'TRANSP fast ions', 'ASCOT file', 'Detector LoS', '#MonteCarlo']
+        combos = {'Code': ['TRANSP', 'ASCOT'], 'Spectrum': ['Total', 'Line-of-sight']}
+        cb = ['Store spectra'] 
+        self.fill_layout(spec_layout, 'spectrum', entries=entries, combos=combos, checkbuts=cb, ent_wid=360)
 
 #---------
 # LOS
@@ -427,25 +428,49 @@ class REAC_GUI(QMainWindow):
 
     def spectra(self):
 
-        neutReac_dic = self.get_gui_tab('spectrum')
+        nes_d = self.get_gui_tab('spectrum')
+        print(nes_d.keys())
 
         logger.info('Spectra')
-        dens = neutReac_dic['dens']
-        reac_lbl = neutReac_dic['reac']
-        n_sample = neutReac_dic['n_sample']
-        E1 = neutReac_dic['E1']
-        E2 = neutReac_dic['E2']
-        losx = neutReac_dic['losx']
-        losy = neutReac_dic['losy']
-        losz = neutReac_dic['losz']
-        Earr, weight = spc.mono_iso(E1, E2, [losx, losy, losz], reac_lbl, n_sample=n_sample)
-        Egrid, Espec = spc.calc_spectrum(dens, Earr, weight)
+        n_samples = nes_d['#MonteCarlo']
+        code = nes_d['Code']
+
+        if code == 'TRANSP':
+            f1 = nes_d['TRANSP plasma']
+            f2 = nes_d['TRANSP fast ions']
+        elif code == 'ASCOT':
+            f1 = nes_d['ASCOT file']
+            f2 = nes_d['ASCOT file']
+        if nes_d['Spectrum'] == 'Total':
+            nes = nspectrum.nSpectrum(f1, f2, src=code.lower(), samples_per_volume_element=n_samples)
+        elif nes_d['Spectrum'] == 'Line-of-sight':
+            nes = nspectrum.nSpectrum(f1, f2, f_los=nes_d['Detector LoS'], src=code.lower(), samples_per_volume_element=n_samples)
+
+        reComp = False
+        if not hasattr(self, 'nes_d'):
+            reComp = True
+        else:
+            for key, val in self.nes_d.items():
+                if key not in ('Store spectra'):
+                    if nes_d[key] != val:
+                        reComp = True
+                        break
+        if reComp:
+            nes.run()
+        else:
+            nes = self.nes
 
         if not hasattr(self, 'wid'):
             self.wid = plots.plotWindow()
-        fig_spec = plots.fig_spec(Egrid, Espec)
-        self.wid.addPlot('Neutron Spectrum', fig_spec)
+        fig_nes = nes.plotSpectra()
+        self.wid.addPlot('Neutron Spectrum', fig_nes)
         self.wid.show()
+        self.nes_d = {key: val for key, val in nes_d.items()}
+        self.nes = nes
+
+# Write output file
+        if nes_d['Store spectra']:
+            nes.storeSpectra()
 
 
     def los(self):
@@ -462,38 +487,38 @@ class REAC_GUI(QMainWindow):
         self.wid.addPlot('Detector LoS', fig_los)
         self.wid.show()
 
-# Write output
+# Write output file
         if geo['Write LOS']:
             dlos.writeLOS()
 
 
     def nresp(self):
 
-        nresp_set = self.get_gui_tab('nresp')
-        nEn = 17
+        nresp_d = self.get_gui_tab('nresp')
+
         reComp = False
-        if not hasattr(self, 'nresp_set'):
+        if not hasattr(self, 'nresp_d'):
             reComp = True
         else:
-            for key, val in self.nresp_set.items():
+            for key, val in self.nresp_d.items():
                 if key not in ('Energy for PHS plot', 'Write nresp'):
-                    if nresp_set[key] != val:
+                    if nresp_d[key] != val:
                         reComp = True
                         break
         if reComp:
-            nrsp = nresp.NRESP(nresp_set, parallel=nresp_set['MultiProcess'])
+            nrsp = nresp.NRESP(nresp_d, parallel=nresp_d['MultiProcess'])
         else:
             nrsp = self.nrsp
-        fig_nr = nrsp.plotResponse(E_MeV=nresp_set['Energy for PHS plot'])
+        fig_nr = nrsp.plotResponse(E_MeV=nresp_d['Energy for PHS plot'])
         if not hasattr(self, 'wid'):
             self.wid = plots.plotWindow()
         self.wid.addPlot('NRESP', fig_nr)
         self.wid.show()
-        self.nresp_set = {key: val for key, val in nresp_set.items()}
+        self.nresp_d = {key: val for key, val in nresp_d.items()}
         self.nrsp = nrsp
 
 # Write output
-        if nresp_set['Write nresp']:
+        if nresp_d['Write nresp']:
             nrsp.to_nresp()
 
 
