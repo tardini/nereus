@@ -202,7 +202,7 @@ class REAC_GUI(QMainWindow):
 
         entries = ['TRANSP plasma', 'TRANSP fast ions', 'ASCOT file', 'Detector LoS', '#MonteCarlo', 'Response file', 'Output file']
         combos = {'Code': ['TRANSP', 'ASCOT'], 'Spectrum': ['Total', 'Line-of-sight']}
-        cb = ['Store spectra'] 
+        cb = ['Store spectra', 'MultiProcess'] 
         self.fill_layout(spec_layout, 'spectrum', entries=entries, combos=combos, checkbuts=cb, ent_wid=360)
 
 #---------
@@ -456,12 +456,12 @@ class REAC_GUI(QMainWindow):
                         reComp = True
                         break
         if reComp:
-            nes.run()
+            nes.run(parallel=nes_d['MultiProcess'])
         else:
             nes = self.nes
         logger.info('Convolving into Pulse Hieght Spectrum')
-        nes.phs(f_resp=nes_d['Response file'])
-        
+        nes.nes2phs(f_resp=nes_d['Response file'])
+
         if not hasattr(self, 'wid'):
             self.wid = plots.plotWindow()
         fig_nes = nes.plotSpectra()

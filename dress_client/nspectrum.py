@@ -80,7 +80,7 @@ class nSpectrum:
                 self.dressInput[key] = val[los_sep]
 
 
-    def run(self):
+    def run(self, parallel=True):
         '''Execute DRESS calculation, computing Neutron Emission Spectra: beam-target, thermonuclear, beam-beam'''
 
         logger.info('Running DRESS')
@@ -115,14 +115,21 @@ class nSpectrum:
         logger.debug('T #nan: %d, #T<=0: %d', np.sum(np.isnan(bulk_dist.T)), np.sum(bulk_dist.T <= 0))
         logger.debug('nd #nan: %d, #nd<=0: %d', np.sum(np.isnan(bulk_dist.density)), np.sum(bulk_dist.density <= 0))
 
-        timeout_pool = 2000
-        pool = Pool(cpu_count())
-
-        logger.info('Computing beam-target, thermonuclear, beam-beam')
-        out = pool.map_async( calcvols, [(vols, fast_dist, bulk_dist, scalc, En_bins), (vols, bulk_dist, bulk_dist, scalc, En_bins), (vols, fast_dist, fast_dist, scalc, En_bins)]).get(timeout_pool)
-        pool.close()
-        pool.join()
-        self.bt, self.th, self.bb = np.array(out)
+        if parallel:
+            timeout_pool = 2000
+            pool = Pool(cpu_count())
+            logger.info('Computing beam-target, thermonuclear, beam-beam')
+            out = pool.map_async( calcvols, [(vols, fast_dist, bulk_dist, scalc, En_bins), (vols, bulk_dist, bulk_dist, scalc, En_bins), (vols, fast_dist, fast_dist, scalc, En_bins)]).get(timeout_pool)
+            pool.close()
+            pool.join()
+            self.bt, self.th, self.bb = np.array(out)
+        else:
+            logger.info('Computing beam-target')
+            self.bt = dress.utils.calc_vols(vols, fast_dist, bulk_dist, scalc, En_bins, integrate=True, quiet=False)
+            logger.info('Computing thermonuclear')
+            self.th = dress.utils.calc_vols(vols, bulk_dist, bulk_dist, scalc, En_bins, integrate=True, quiet=False)
+            logger.info('Computing beam-beam')
+            self.bb = dress.utils.calc_vols(vols, fast_dist, fast_dist, scalc, En_bins, integrate=True, quiet=False)     
 
         for spec in self.bt, self.bb, self.th:
             spec /= bin_keV
@@ -144,7 +151,7 @@ class nSpectrum:
             logger.info('Total neutron rate %12.4e N/s', rate_bt + rate_th + rate_bb)
 
 
-    def phs(self, f_resp='responses/rm_bg.cdf'):
+    def nes2phs(self, f_resp='responses/rm_bg.cdf'):
 
         resp = response.RESP()
         fname, ext = os.path.splitext(f_resp)
