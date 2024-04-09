@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
 import matplotlib.patches as patches
+from multiprocessing import Pool, cpu_count
 import dress
 import response
 from dress_client import fi_codes
@@ -16,7 +17,15 @@ logger.setLevel(logging.DEBUG)
 
 flt = np.float64
 
-       
+
+def calcvols(tuple_in):
+
+    vols, dist1, dist2, scalc, En_bins = tuple_in
+    nes = dress.utils.calc_vols(vols, dist1, dist2, scalc, En_bins, integrate=True, quiet=False)
+
+    return nes
+
+
 class nSpectrum:
 
 
@@ -106,14 +115,14 @@ class nSpectrum:
         logger.debug('T #nan: %d, #T<=0: %d', np.sum(np.isnan(bulk_dist.T)), np.sum(bulk_dist.T <= 0))
         logger.debug('nd #nan: %d, #nd<=0: %d', np.sum(np.isnan(bulk_dist.density)), np.sum(bulk_dist.density <= 0))
 
-        logger.info('Beam-target')
-        self.bt = dress.utils.calc_vols(vols, fast_dist, bulk_dist, scalc, En_bins, integrate=True, quiet=False)
+        timeout_pool = 2000
+        pool = Pool(cpu_count())
 
-        logger.info('Thermonuclear')
-        self.th = dress.utils.calc_vols(vols, bulk_dist, bulk_dist, scalc, En_bins, integrate=True, quiet=False)
-
-        logger.info('Beam-beam')
-        self.bb = dress.utils.calc_vols(vols, fast_dist, fast_dist, scalc, En_bins, integrate=True, quiet=False)
+        logger.info('Computing beam-target, thermonuclear, beam-beam')
+        out = pool.map_async( calcvols, [(vols, fast_dist, bulk_dist, scalc, En_bins), (vols, bulk_dist, bulk_dist, scalc, En_bins), (vols, fast_dist, fast_dist, scalc, En_bins)]).get(timeout_pool)
+        pool.close()
+        pool.join()
+        self.bt, self.th, self.bb = np.array(out)
 
         for spec in self.bt, self.bb, self.th:
             spec /= bin_keV
@@ -229,11 +238,11 @@ class nSpectrum:
         logger.info('Plotting LoS spectrum')
         fig = plt.figure(figsize=(8.8, 5.9))
 
-        plt.subplot(1, 2, 1)
+        ax_nes = fig.add_subplot(1, 2, 1)
         plt.plot(self.En, self.bt, label='BT')
         plt.plot(self.En, self.th, label='TH')
         plt.plot(self.En, self.bb, label='BB')
-        ymax = plt.gca().get_ylim()[1]
+        ymax = ax_nes.get_ylim()[1]
         plt.plot([2452, 2452], [0, 1.5*ymax], 'k-') # Reference d-d neutron energy
         plt.ylim([0, ymax])
         plt.xlabel('Neutron energy (keV)')
@@ -245,12 +254,14 @@ class nSpectrum:
         plt.legend()
         plt.xlim(2000, 3000)
 
-        plt.subplot(1, 2, 2)
+        ax_phs = fig.add_subplot(1, 2, 2)
         plt.plot(self.phs['Elight_MeVee'], self.phs['bt'], label='BT')
         plt.plot(self.phs['Elight_MeVee'], self.phs['th'], label='TH')
         plt.plot(self.phs['Elight_MeVee'], self.phs['bb'], label='BB')
         plt.xlabel('Light equivalent energy (MeVee)')
         plt.xlim(0, 2)
+        ax_phs.set_ylim(bottom=0)
+
         if hasattr(self, 'inside'):
             plt.title('Line-of-sight Pulse Height Spectrum')
         else:
