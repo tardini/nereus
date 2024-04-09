@@ -21,7 +21,7 @@ flt = np.float64
 def calcvols(tuple_in):
 
     vols, dist1, dist2, scalc, En_bins = tuple_in
-    nes = dress.utils.calc_vols(vols, dist1, dist2, scalc, En_bins, integrate=True, quiet=False)
+    nes = dress.utils.calc_vols(vols, dist1, dist2, scalc, En_bins, integrate=True, quiet=True)
 
     return nes
 
@@ -87,16 +87,13 @@ class nSpectrum:
 
         Ncells = len(self.dressInput['rho'])
 
-        B_dir = np.atleast_2d([0, -1, 0])
-        B_dir = np.repeat(B_dir, Ncells, axis=0)   # B-dir for each spatial location
+        Bdir = np.atleast_2d([0, -1, 0])
+        B_dir = np.repeat(Bdir, Ncells, axis=0)   # B-dir for each spatial location
 
-        if 'v_rot' in self.dressInput.keys():
-            v_rot = self.dressInput['v_rot']
-        elif 'ang_freq' in self.dressInput.keys():
-            v_rot = np.zeros((Ncells, 3), dtype=flt)
-            v_rot[:, 1] = self.dressInput['ang_freq']*self.dressInput['R']
-        else:
-            v_rot = np.zeros((Ncells, 3), dtype=flt)
+        if 'v_rot' not in self.dressInput.keys():
+            self.dressInput['v_rot'] = np.zeros((Ncells, 3), dtype=flt)
+            if 'ang_freq' in self.dressInput.keys():
+                self.dressInput['v_rot'][:, 1] = self.dressInput['ang_freq']*self.dressInput['R']
 
         dd    = dress.reactions.DDNHe3Reaction()
         scalc = dress.SpectrumCalculator(dd, n_samples=self.samples_per_volume_element)
@@ -111,18 +108,46 @@ class nSpectrum:
         vols = dress.utils.make_vols(self.dressInput['dV'], self.dressInput['solidAngle'], pos=(self.dressInput['R'], self.dressInput['Z']))
         fast_dist = dress.utils.make_dist('energy-pitch', 'd', Ncells, self.dressInput['density'],
             energy_axis=self.dressInput['E'], pitch_axis=self.dressInput['pitch'], distvals=self.dressInput['F'], ref_dir=B_dir)
-        bulk_dist = dress.utils.make_dist('maxwellian', 'd', Ncells, self.dressInput['nd'], temperature=self.dressInput['Ti'], v_collective=v_rot)
+        bulk_dist = dress.utils.make_dist('maxwellian', 'd', Ncells, self.dressInput['nd'], temperature=self.dressInput['Ti'], v_collective=self.dressInput['v_rot'])
         logger.debug('T #nan: %d, #T<=0: %d', np.sum(np.isnan(bulk_dist.T)), np.sum(bulk_dist.T <= 0))
         logger.debug('nd #nan: %d, #nd<=0: %d', np.sum(np.isnan(bulk_dist.density)), np.sum(bulk_dist.density <= 0))
+
+# Split arrays
+
+        self.dressSplit = {}
+        if hasattr(self, 'inside'):
+            n_split = 20
+        else:
+            n_split = 10
+        for key in ('dV', 'solidAngle', 'R', 'Z', 'density', 'F', 'nd', 'Ti', 'v_rot'):
+            self.dressSplit[key] = np.split(self.dressInput[key], n_split)
+        vols_spl = {}
+        fast_spl = {}
+        bulk_spl = {}
+        for j in range(n_split):
+            Nvols = len(self.dressSplit['dV'][j])
+            B_dir = np.repeat(Bdir, Nvols, axis=0)   # B-dir for each spatial location
+            vols_spl[j] = dress.utils.make_vols(self.dressSplit['dV'][j], self.dressSplit['solidAngle'][j], pos=(self.dressSplit['R'][j], self.dressSplit['Z'][j]))
+            fast_spl[j] = dress.utils.make_dist('energy-pitch', 'd', Nvols, self.dressSplit['density'][j],
+                energy_axis=self.dressInput['E'], pitch_axis=self.dressInput['pitch'], distvals=self.dressSplit['F'][j], ref_dir=B_dir)
+            bulk_spl[j] = dress.utils.make_dist('maxwellian', 'd', Nvols, self.dressSplit['nd'][j], temperature=self.dressSplit['Ti'][j], v_collective=self.dressSplit['v_rot'][j])
+            
 
         if parallel:
             timeout_pool = 2000
             pool = Pool(cpu_count())
-            logger.info('Computing beam-target, thermonuclear, beam-beam')
-            out = pool.map_async( calcvols, [(vols, fast_dist, bulk_dist, scalc, En_bins), (vols, bulk_dist, bulk_dist, scalc, En_bins), (vols, fast_dist, fast_dist, scalc, En_bins)]).get(timeout_pool)
-            pool.close()
-            pool.join()
-            self.bt, self.th, self.bb = np.array(out)
+            logger.info('Computing beam-target')
+            bt = pool.map_async( calcvols, [(vols_spl[j], fast_spl[j], bulk_spl[j], scalc, En_bins) for j in range(n_split)]).get(timeout_pool)
+            logger.info('Computing thermonuclear')
+            th = pool.map_async( calcvols, [(vols_spl[j], bulk_spl[j], bulk_spl[j], scalc, En_bins) for j in range(n_split)]).get(timeout_pool)
+            logger.info('Computing beam-beam')
+            bb = pool.map_async( calcvols, [(vols_spl[j], fast_spl[j], fast_spl[j], scalc, En_bins) for j in range(n_split)]).get(timeout_pool)
+            bt = np.array(bt)
+            th = np.array(th)
+            bb = np.array(bb)
+            self.bt = np.sum(bt, axis=0)
+            self.th = np.sum(th, axis=0)
+            self.bb = np.sum(bb, axis=0)
         else:
             logger.info('Computing beam-target')
             self.bt = dress.utils.calc_vols(vols, fast_dist, bulk_dist, scalc, En_bins, integrate=True, quiet=False)
@@ -203,18 +228,11 @@ class nSpectrum:
         plt.xlabel('rho')
         plt.ylabel('temperature (keV)')
 
-        if 'v_rot' in self.dressInput.keys():
-            plt.figure()
-            plt.plot(self.dressInput['rho'], self.dressInput['v_rot'], 'ro')
-            plt.title('Toroidal velocity')
-            plt.xlabel('rho')
-            plt.ylabel('Toroidal velocity (m/s)')
-        else:
-            plt.figure()
-            plt.plot(self.dressInput['rho'], self.dressInput['ang_freq'], 'ro')
-            plt.title('Angular frequency')
-            plt.xlabel('rho')
-            plt.ylabel('angular frequency (rad/s)')
+        plt.figure()
+        plt.plot(self.dressInput['rho'], self.dressInput['v_rot'], 'ro')
+        plt.title('Toroidal velocity')
+        plt.xlabel('rho')
+        plt.ylabel('Toroidal velocity (m/s)')
 
 # Plot fast D density
         plt.figure()
