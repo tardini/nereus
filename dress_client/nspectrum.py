@@ -83,7 +83,7 @@ class nSpectrum:
     def run(self, parallel=True):
         '''Execute DRESS calculation, computing Neutron Emission Spectra: beam-target, thermonuclear, beam-beam'''
 
-        logger.info('Running DRESS')
+        logger.info('Running DRESS, #MC %d', self.samples_per_volume_element)
 
         Ncells = len(self.dressInput['rho'])
 
@@ -105,35 +105,24 @@ class nSpectrum:
 
 # Compute spectra components
 
-        vols = dress.utils.make_vols(self.dressInput['dV'], self.dressInput['solidAngle'], pos=(self.dressInput['R'], self.dressInput['Z']))
-        fast_dist = dress.utils.make_dist('energy-pitch', 'd', Ncells, self.dressInput['density'],
-            energy_axis=self.dressInput['E'], pitch_axis=self.dressInput['pitch'], distvals=self.dressInput['F'], ref_dir=B_dir)
-        bulk_dist = dress.utils.make_dist('maxwellian', 'd', Ncells, self.dressInput['nd'], temperature=self.dressInput['Ti'], v_collective=self.dressInput['v_rot'])
-        logger.debug('T #nan: %d, #T<=0: %d', np.sum(np.isnan(bulk_dist.T)), np.sum(bulk_dist.T <= 0))
-        logger.debug('nd #nan: %d, #nd<=0: %d', np.sum(np.isnan(bulk_dist.density)), np.sum(bulk_dist.density <= 0))
-
+        if parallel:
 # Split arrays
 
-        self.dressSplit = {}
-        if hasattr(self, 'inside'):
+            self.dressSplit = {}
             n_split = 20
-        else:
-            n_split = 10
-        for key in ('dV', 'solidAngle', 'R', 'Z', 'density', 'F', 'nd', 'Ti', 'v_rot'):
-            self.dressSplit[key] = np.split(self.dressInput[key], n_split)
-        vols_spl = {}
-        fast_spl = {}
-        bulk_spl = {}
-        for j in range(n_split):
-            Nvols = len(self.dressSplit['dV'][j])
-            B_dir = np.repeat(Bdir, Nvols, axis=0)   # B-dir for each spatial location
-            vols_spl[j] = dress.utils.make_vols(self.dressSplit['dV'][j], self.dressSplit['solidAngle'][j], pos=(self.dressSplit['R'][j], self.dressSplit['Z'][j]))
-            fast_spl[j] = dress.utils.make_dist('energy-pitch', 'd', Nvols, self.dressSplit['density'][j],
+            for key in ('dV', 'solidAngle', 'R', 'Z', 'density', 'F', 'nd', 'Ti', 'v_rot'):
+                self.dressSplit[key] = np.array_split(self.dressInput[key], n_split)
+            vols_spl = {}
+            fast_spl = {}
+            bulk_spl = {}
+            for j in range(n_split):
+                Nvols = len(self.dressSplit['dV'][j])
+                B_dir = np.repeat(Bdir, Nvols, axis=0)   # B-dir for each spatial location
+                vols_spl[j] = dress.utils.make_vols(self.dressSplit['dV'][j], self.dressSplit['solidAngle'][j], pos=(self.dressSplit['R'][j], self.dressSplit['Z'][j]))
+                fast_spl[j] = dress.utils.make_dist('energy-pitch', 'd', Nvols, self.dressSplit['density'][j],
                 energy_axis=self.dressInput['E'], pitch_axis=self.dressInput['pitch'], distvals=self.dressSplit['F'][j], ref_dir=B_dir)
-            bulk_spl[j] = dress.utils.make_dist('maxwellian', 'd', Nvols, self.dressSplit['nd'][j], temperature=self.dressSplit['Ti'][j], v_collective=self.dressSplit['v_rot'][j])
-            
+                bulk_spl[j] = dress.utils.make_dist('maxwellian', 'd', Nvols, self.dressSplit['nd'][j], temperature=self.dressSplit['Ti'][j], v_collective=self.dressSplit['v_rot'][j])
 
-        if parallel:
             timeout_pool = 2000
             pool = Pool(cpu_count())
             logger.info('Computing beam-target')
@@ -149,6 +138,12 @@ class nSpectrum:
             self.th = np.sum(th, axis=0)
             self.bb = np.sum(bb, axis=0)
         else:
+            vols = dress.utils.make_vols(self.dressInput['dV'], self.dressInput['solidAngle'], pos=(self.dressInput['R'], self.dressInput['Z']))
+            fast_dist = dress.utils.make_dist('energy-pitch', 'd', Ncells, self.dressInput['density'],
+                energy_axis=self.dressInput['E'], pitch_axis=self.dressInput['pitch'], distvals=self.dressInput['F'], ref_dir=B_dir)
+            bulk_dist = dress.utils.make_dist('maxwellian', 'd', Ncells, self.dressInput['nd'], temperature=self.dressInput['Ti'], v_collective=self.dressInput['v_rot'])
+            logger.debug('T #nan: %d, #T<=0: %d', np.sum(np.isnan(bulk_dist.T)), np.sum(bulk_dist.T <= 0))
+            logger.debug('nd #nan: %d, #nd<=0: %d', np.sum(np.isnan(bulk_dist.density)), np.sum(bulk_dist.density <= 0))
             logger.info('Computing beam-target')
             self.bt = dress.utils.calc_vols(vols, fast_dist, bulk_dist, scalc, En_bins, integrate=True, quiet=False)
             logger.info('Computing thermonuclear')

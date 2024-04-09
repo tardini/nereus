@@ -429,7 +429,6 @@ class REAC_GUI(QMainWindow):
     def spectra(self):
 
         nes_d = self.get_gui_tab('spectrum')
-        print(nes_d.keys())
 
         logger.info('Spectra')
         n_samples = nes_d['#MonteCarlo']
@@ -459,7 +458,7 @@ class REAC_GUI(QMainWindow):
             nes.run(parallel=nes_d['MultiProcess'])
         else:
             nes = self.nes
-        logger.info('Convolving into Pulse Hieght Spectrum')
+        logger.info('Convolving into Pulse Height Spectrum')
         nes.nes2phs(f_resp=nes_d['Response file'])
 
         if not hasattr(self, 'wid'):
