@@ -40,9 +40,11 @@ class nSpectrum:
             self.codeClass = fi_codes.ASCOT2DRESS(f_in1)
 
         if f_los is None:
+            self.los = False
             self.dressInput = self.codeClass.code_d
             self.dressInput['solidAngle'] = 4*np.pi*np.ones_like(self.dressInput['dV'])
         else:
+            self.los = True
             x_m, y_m, z_m, omega, V_m3 = np.loadtxt(f_los, unpack=True)
             R_m = np.hypot(x_m, y_m)
             self.los_dressInput(R_m, z_m)
@@ -159,7 +161,7 @@ class nSpectrum:
         rate_bt = bin_keV*np.sum(self.bt)
         rate_th = bin_keV*np.sum(self.th)
         rate_bb = bin_keV*np.sum(self.bb)
-        if hasattr(self, 'inside'): # LoS
+        if self.los: # LoS
             logger.info('b-t rate at detector %12.4e N/s', rate_bt)
             logger.info('th  rate at detector %12.4e N/s', rate_th)
             logger.info('b-b rate at detector %12.4e N/s', rate_bb)
@@ -267,7 +269,7 @@ class nSpectrum:
         plt.ylim([0, ymax])
         plt.xlabel('Neutron energy (keV)')
         plt.ylabel('Energy spectrum (neuts/keV/s)')
-        if hasattr(self, 'inside'):
+        if self.los:
             plt.title('Line-of-sight Neutron Emission Spectrum')
         else:
             plt.title('Total Neutron Emission Spectrum')
@@ -282,7 +284,7 @@ class nSpectrum:
         plt.xlim(0, 2)
         ax_phs.set_ylim(bottom=0)
 
-        if hasattr(self, 'inside'):
+        if self.los:
             plt.title('Line-of-sight Pulse Height Spectrum')
         else:
             plt.title('Total Pulse Height')

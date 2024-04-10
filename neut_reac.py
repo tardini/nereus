@@ -23,9 +23,8 @@ import matplotlib.pylab as plt
 from mpl_toolkits.mplot3d import Axes3D
 from reactivities import *
 import calc_cross_section as cs
-import calc_kinematics as ck
 from los import los
-import plots
+import plots, response
 from reactions import reaction
 from nresp import nresp
 from dress_client import nspectrum
@@ -84,10 +83,10 @@ class REAC_GUI(QMainWindow):
         qcross.setLayout(cross_layout)
         qtabs.addTab(qcross, 'Cross-sections')
 
-        qkin = QWidget()
-        kin_layout = QGridLayout()
-        qkin.setLayout(kin_layout)
-        qtabs.addTab(qkin, 'Scattering kinematics')
+        qresp = QWidget()
+        resp_layout = QGridLayout()
+        qresp.setLayout(resp_layout)
+        qtabs.addTab(qresp, 'Response Matrix')
 
         qspec = QWidget()
         spec_layout = QGridLayout()
@@ -116,9 +115,9 @@ class REAC_GUI(QMainWindow):
         menubar.addMenu(jsonMenu)
         menubar.addMenu(helpMenu)
 
-        fmap = {'reac': self.reactivity, 'csec': self.cross_section, 'kine': self.scatt_kine, \
+        fmap = {'reac': self.reactivity, 'csec': self.cross_section, 'resp': self.response, \
                 'spec': self.spectra, 'los': self.los, 'nresp': self.nresp, 'exit': sys.exit}
-        qlbl = {'reac': '&Reactivity', 'csec': '&Cross-section', 'kine': '&Kinematics', \
+        qlbl = {'reac': '&Reactivity', 'csec': '&Cross-section', 'resp': '&Response Matrix', \
                 'spec': '&Spectra', 'los': '&Line-of-Sight', 'nresp': '&NRESP', 'exit': 'Exit'}
         Action = {}
         for key, lbl in qlbl.items():
@@ -188,13 +187,13 @@ class REAC_GUI(QMainWindow):
         combos = {'reac': reaction.keys()}
         self.fill_layout(cross_layout, 'cross', entries=entries, checkbuts=cb, combos=combos)
 
-#-----------
-# Kinematics
-#-----------
+#---------
+# Response
+#---------
 
-        entries = ['v1x', 'v1y', 'v1z', 'v2x', 'v2y', 'v2z', 'losx', 'losy', 'losz']
-        combos = {'reac': reaction.keys()}
-        self.fill_layout(kin_layout, 'kinematics', entries=entries, combos=combos, lbl_wid=40, ent_wid=80)
+        entries = ['Input file', 'Gaussian broadening', 'Plot Eneut [MeV]']
+        combos = {'Write response': ['None', 'CDF', 'hepro']}
+        self.fill_layout(resp_layout, 'response', entries=entries, combos=combos, lbl_wid=140, ent_wid=360)
 
 #--------
 # Spectra
@@ -404,25 +403,51 @@ class REAC_GUI(QMainWindow):
         self.wid.show()
 
 
-    def scatt_kine(self):
+    def response(self):
 
-        scatt_dic = self.get_gui_tab('kinematics')
-        logger.info('Scattering kinematics')
-        reac_lbl = scatt_dic['reac']
-        v1 = [scatt_dic['v1x'], scatt_dic['v1y'], scatt_dic['v1z']]
-        v2 = [scatt_dic['v2x'], scatt_dic['v2y'], scatt_dic['v2z']]
-        versor_out = [scatt_dic['losx'], scatt_dic['losy'], scatt_dic['losz']]
-        print(v1)
-        print(versor_out)
+        resp_d = self.get_gui_tab('response')
+        logger.info('Response Matrix')
+        out_lbl = resp_d['Write response']
+        f_in = resp_d['Input file']
+        f_gb = resp_d['Gaussian broadening']
+        En   = resp_d['Plot Eneut [MeV]'] 
 
-        kin = ck.calc_reac(v1, v2, versor_out, reac_lbl)
+        resp = response.RESP()
+        fname = ''.join(os.path.splitext(f_in)[:-1])
+        ext = os.path.splitext(f_in)[-1]
+        print(fname)
+        print(ext)
+        if ext == '.cdf':
+            resp.from_cdf(f_in)
+        elif ext == '.hepro':
+            resp.from_hepro(f_in)
+        elif ext in ('.DAT', '.rsp'):
+            resp.from_nresp()
+
+        if f_gb:
+            resp.broaden()
+            fgb_out = '%s_gb.%s' %(fname, out_lbl)
+
+        f_out = '%s.%s' %(fname, out_lbl)
+        if out_lbl == 'cdf':
+            resp.to_cdf(f_out)
+            if f_gb:
+                tmp = resp.RespMat
+                resp.RespMat = resp.RespMat_gb
+                resp.to_cdf(fgb_out)
+                resp.RespMat = tmp
+        elif out_lbl == 'hepro':
+            resp.to_hepro(f_out)
+            if f_gb:
+                tmp = resp.RespMat
+                resp.RespMat = resp.RespMat_gb
+                resp.to_hepro(fgb_out)
+                resp.RespMat = tmp
 
         if not hasattr(self, 'wid'):
             self.wid = plots.plotWindow()
-        fig_kine = plt.figure('Kinematics', (8.8, 5.9), dpi=100)
-        self.wid.addPlot('Scattering kinematics', fig_kine)
-# Need to define axes after canvas creation, in order to rotate the figure interactively
-        plots.ax_scatt(fig_kine, kin)
+        fig_resp = plots.fig_resp(resp, En_MeV=En)
+        self.wid.addPlot('Response matrix', fig_resp)
         self.wid.show()
 
 

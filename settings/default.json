@@ -3,7 +3,8 @@
 
     "cross": {"E": "np.linspace(0.2, 0.6, 5)", "reac": "D(D,n)3He", "Z1": 2, "Z2": 2, "log_scale": false},
  
-    "kinematics": {"reac": "D(T,n)4He", "v1x": 1e-2, "v1y": 1e-2, "v1z": 1e-2, "v2x": 5e-3, "v2y": 0.0, "v2z": 0.0, "losx": 1.0, "losy": 0.0, "losz": 0.0},
+    "response": {"Input file": "responses/rm_bg.cdf", "Write response": "None",
+        "Gaussian broadening": "responses/neut_fit.txt", "Plot Eneut [MeV]": 4.7},
  
     "spectrum": {"Code": "TRANSP", "Spectrum": "Line-of-sight",
         "#MonteCarlo": 1000, "Store spectra": true, "MultiProcess": true,

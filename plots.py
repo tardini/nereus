@@ -96,22 +96,20 @@ def fig_cross(reac, theta, Egrid, log_scale=False, color='#d0d0d0'):
     return fig_cs
 
 
-def ax_scatt(fig_sol, kin, color='#d0d0d0'):
+def fig_resp(resp, En_MeV=2.5, color='#d0d0d0'):
 
-#    plt.cla()
-    ax_sol = Axes3D(fig_sol) #.add_subplot(projection='3d')
-    ax_sol.plot([0, kin.in1.qmom[1]], [0, kin.in1.qmom[2]], [0, kin.in1.qmom[3]], 'k-', linewidth=lwid, label='In1')
-    ax_sol.plot([0, kin.in2.qmom[1]], [0, kin.in2.qmom[2]], [0, kin.in2.qmom[3]], 'k--', linewidth=lwid, label='In2')
-    if hasattr(kin.prod1, 'qmom_b'):
-        ax_sol.plot([0, kin.prod1.qmom_b[1]], [0, kin.prod1.qmom_b[2]], [0, kin.prod1.qmom_b[3]], 'b-', linewidth=lwid, label='out1_b')
-        ax_sol.plot([0, kin.prod2.qmom_b[1]], [0, kin.prod2.qmom_b[2]], [0, kin.prod2.qmom_b[3]], 'b--', linewidth=lwid, label='out2_b')
-    ax_sol.plot([0, kin.prod1.qmom_a[1]], [0, kin.prod1.qmom_a[2]], [0, kin.prod1.qmom_a[3]], 'r-', linewidth=lwid, label='out1_a')
-    ax_sol.plot([0, kin.prod2.qmom_a[1]], [0, kin.prod2.qmom_a[2]], [0, kin.prod2.qmom_a[3]], 'r--', linewidth=lwid, label='out2_a')
-    ax_sol.set_xlim([-200, 200])
-    ax_sol.set_ylim([-200, 200])
-    ax_sol.legend()
+    d2 = (resp.En_MeV - En_MeV)**2
+    jEn = np.argmin(d2)
+    fig_resp = plt.figure('Response', (8.8, 5.9), dpi=100)
+    plt.cla()
+    plt.plot(resp.Ephs_MeVee, resp.RespMat[jEn], 'r-', label='En=%5.3f MeV' %resp.En_MeV[jEn])
+    if hasattr(resp, 'RespMat_gb'):
+        plt.plot(resp.Ephs_MeVee, resp.RespMat_gb[jEn], 'b-', label='En=%5.3f MeV, GB' %resp.En_MeV[jEn])
+    plt.legend()
+    plt.xlim([0, 3])
+    plt.ylim([0, 0.04])
 
-#    return fig_sol
+    return fig_resp
 
 
 def fig_spec(Egrid, Espec, color='#d0d0d0'):
