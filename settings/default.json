@@ -3,7 +3,7 @@
 
     "cross": {"E": "np.linspace(0.2, 0.6, 5)", "reac": "D(D,n)3He", "Z1": 2, "Z2": 2, "log_scale": false},
  
-    "response": {"Input file": "responses/rm_bg.cdf", "Write response": "None",
+    "response": {"Input file": "responses/rm.cdf", "Write response": "None",
         "Gaussian broadening": "responses/neut_fit.txt", "Plot Eneut [MeV]": 4.7},
  
     "spectrum": {"Code": "TRANSP", "Spectrum": "Line-of-sight",

@@ -84,17 +84,17 @@ class RESP:
 
         self.En_MeV     = 1e-3*np.array(En    , dtype=np.float32)
         self.En_wid_MeV = 1e-3*np.array(En_wid, dtype=np.float32)
-        self.nEn = len(self.En_MeV)
+        nEn = len(self.En_MeV)
         self.phs_max = 0
-        for j in range(self.nEn):
+        for j in range(nEn):
             for lbl, spec in self.spc_d[j].items():
                 self.phs_max = max(self.phs_max, len(spec))
 
         self.EphsB_MeVee = self.Ebin_MeVee*np.arange(self.phs_max + 1)
         self.Ephs_MeVee = 0.5*(self.EphsB_MeVee[1:] + self.EphsB_MeVee[:-1])
-        self.RespMat = np.zeros((self.nEn, self.phs_max))
+        self.RespMat = np.zeros((nEn, self.phs_max))
 
-        for jEn in range(self.nEn):
+        for jEn in range(nEn):
             for lbl, arr in self.spc_d[jEn].items():
                 if lbl[:5] != 'PP3AS':
                     myarr = np.zeros(self.phs_max)
@@ -109,9 +109,10 @@ class RESP:
 
         cv = netcdf_file(f_cdf, 'r', mmap=False).variables
 
-        self.Ebin_MeVee  = cv['EKA'][:]
+        self.Ebin_MeVee  = cv['Ebin'][:]
         self.RespMat     = cv['ResponseMatrix'].data
         self.En_MeV      = cv['E_NEUT'][:]
+        self.En_wid_MeV  = cv['En_wid'][:]
         self.EphsB_MeVee = cv['E_light_B'][:]
         self.Ephs_MeVee  = cv['E_light'][:]
 
@@ -152,9 +153,9 @@ class RESP:
         en2  = np.array(en2, dtype=np.float32)
         self.En_wid_Mev = en2 - en1
         ndims = np.array(ndim, dtype=np.int32)
-        self.nEn = len(self.En_MeV)
+        nEn = len(self.En_MeV)
         self.phs_max = np.max(ndims)
-        self.RespMat = np.zeros((self.nEn, self.phs_max), dtype=np.float32)
+        self.RespMat = np.zeros((nEn, self.phs_max), dtype=np.float32)
         for jEn, phs in enumerate(spc):
             nphs = len(phs)
             self.RespMat[jEn, :nphs] = phs[:nphs]
@@ -202,9 +203,15 @@ class RESP:
 
         if f_cdf is None:
             f_cdf = '%s/rm.cdf' %out_dir
+        fcdf = f_cdf
+        jcdf = 0
+        while os.path.isfile(fcdf):
+            jcdf += 1
+            fcdf = '%s%s' %(f_cdf, jcdf)
 
         len_pos = []
-        for jEn in range(self.nEn):
+        nEn = len(self.En_MeV)
+        for jEn in range(nEn):
             phs = self.RespMat[jEn, :]
             if phs.any() > 0:
                 (ind_pos, ) = np.where(phs > 0.)
@@ -216,11 +223,11 @@ class RESP:
 
 # NetCDF output
 
-        f = netcdf_file(f_cdf, 'w', mmap=False)
+        f = netcdf_file(fcdf, 'w', mmap=False)
 
         f.history = "Created " + datetime.datetime.today().strftime("%d/%m/%y")
 
-        f.createDimension('E_NEUT'   , self.nEn)
+        f.createDimension('E_NEUT'   , nEn)
         f.createDimension('E_light'  , nEp)
         f.createDimension('E_light_B', nEp + 1)
         f.createDimension('Ebin_dim' , 1)
@@ -256,7 +263,7 @@ class RESP:
         rm[:] = self.RespMat[:, :nEp]
 
         f.close()
-        logger.info('Stored %s' %f_cdf)
+        logger.info('Stored %s' %fcdf)
 
 
 if __name__ == "__main__":

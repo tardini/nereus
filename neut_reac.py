@@ -407,7 +407,7 @@ class REAC_GUI(QMainWindow):
 
         resp_d = self.get_gui_tab('response')
         logger.info('Response Matrix')
-        out_lbl = resp_d['Write response']
+        out_lbl = resp_d['Write response'].lower()
         f_in = resp_d['Input file']
         f_gb = resp_d['Gaussian broadening']
         En   = resp_d['Plot Eneut [MeV]'] 
