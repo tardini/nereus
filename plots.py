@@ -102,9 +102,9 @@ def fig_resp(resp, En_MeV=2.5, color='#d0d0d0'):
     jEn = np.argmin(d2)
     fig_resp = plt.figure('Response', (8.8, 5.9), dpi=100)
     plt.cla()
-    plt.plot(resp.Ephs_MeVee, resp.RespMat[jEn], 'r-', label='En=%5.3f MeV' %resp.En_MeV[jEn])
+    plt.plot(resp.Ephs_MeVee, resp.RespMat[jEn], 'r-', label='En=%5.3f MeV' %resp.En_MeV[jEn], linewidth=lwid)
     if hasattr(resp, 'RespMat_gb'):
-        plt.plot(resp.Ephs_MeVee, resp.RespMat_gb[jEn], 'b-', label='En=%5.3f MeV, GB' %resp.En_MeV[jEn])
+        plt.plot(resp.Ephs_MeVee, resp.RespMat_gb[jEn], 'b-', label='En=%5.3f MeV, GB' %resp.En_MeV[jEn], linewidth=lwid)
     plt.legend()
     plt.xlim([0, 0.5*En_MeV])
     plt.ylim([0, 0.3/En_MeV])
