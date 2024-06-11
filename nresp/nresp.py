@@ -140,10 +140,14 @@ class NRESP:
         for jreact in range(n_react):
             ax1.plot(self.Ephs_MeVee, self.light_output[jEn, jreact], label=self.reac_names[jreact])
         ax1.set_ylim([0., 20./E_MeV])
+        ax1.set_xlabel('Pulse Height [MeVee]')
+        ax1.set_ylabel('Pulse Height Spectrum')
         ax1.legend()
 
         ax2 = fig.add_subplot(1, 2, 2)
         resp = np.sum(self.light_output, axis=1)
         ax2.plot(self.Ephs_MeVee, resp[jEn])
         ax2.set_ylim([0., 100./E_MeV])
+        ax2.set_xlabel('Pulse Height [MeVee]')
+        ax2.set_ylabel('Pulse Height Spectrum')
         return fig

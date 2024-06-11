@@ -108,6 +108,8 @@ def fig_resp(resp, En_MeV=2.5, color='#d0d0d0'):
     plt.legend()
     plt.xlim([0, 0.5*En_MeV])
     plt.ylim([0, 0.3/En_MeV])
+    plt.xlabel('Pulse Height [MeVee]')
+    plt.ylabel('Pulse Height Spectrum')
 
     return fig_resp
 

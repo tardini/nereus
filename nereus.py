@@ -41,7 +41,7 @@ logger.setLevel(logging.DEBUG)
 neutReacDir = os.path.dirname(os.path.realpath(__file__))
 
 
-class REAC_GUI(QMainWindow):
+class NEREUS(QMainWindow):
 
 
     def __init__(self):
@@ -552,5 +552,5 @@ if __name__ == '__main__':
 
 
     app = QApplication(sys.argv)
-    main = REAC_GUI()
+    main = NEREUS()
     app.exec_()

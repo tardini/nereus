@@ -1,5 +1,5 @@
-git clone git@github.com:tardini/neut_reac.git
-cd neut_reac
-python neut_reac.py
+git clone git@github.com:tardini/nereus.git
+cd nereus
+python nereus.py
 
-Docu at https://github.com/tardini/neut_reac/wiki
+Docu at https://github.com/tardini/nereus/wiki
