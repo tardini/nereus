@@ -12,8 +12,9 @@ hnd.setFormatter(fmt)
 logger.addHandler(hnd)
 logger.propagate = False
 
-nresp_dir = os.path.dirname(os.path.realpath(__file__))
-out_dir = '%s/output' %nresp_dir
+nereusDir = os.path.dirname(os.path.realpath(__file__))
+responseDir = '%s/responses' %nereusDir
+out_dir = '%s/output' %nereusDir
 os.system('mkdir -p %s' %out_dir)
 
 
@@ -37,7 +38,7 @@ class RESP:
         pass
 
 
-    def from_nresp(self, f_spc='/shares/departments/AUG/users/git/python/neutrons/nresp_f90/SPECT_MPI.DAT'):
+    def from_nresp(self, f_spc='%s/SPECT_MPI.DAT' %responseDir):
 
         self.spc_d = {}
         self.tof_d = {}
@@ -117,7 +118,7 @@ class RESP:
         self.Ephs_MeVee  = cv['E_light'][:]
 
 
-    def from_hepro(self, f_hep='/shares/departments/AUG/users/git/tofana/responses/simresp.rsp'):
+    def from_hepro(self, f_hep='%s/simresp.rsp' %responseDir):
 
         logger.info('Reading file %s' %f_hep)
 
@@ -163,7 +164,7 @@ class RESP:
         self.Ephs_MeVee = 0.5*(self.EphsB_MeVee[1:] + self.EphsB_MeVee[:-1])
 
 
-    def broaden(self, f_par='/shares/departments/AUG/users/git/tofana/output/Optimisation/neut_fit.txt'):
+    def broaden(self, f_par='%s/neut_fit.txt' %responseDir):
         '''Gaussian broadening of the response function'''
 
 # Broadening parameters
@@ -186,7 +187,7 @@ class RESP:
         self.RespMat_gb = np.einsum('ij,jk->ik', self.RespMat, gau_ker)
 
 
-    def to_hepro(self, fout='ddnpar.asc'):
+    def to_hepro(self, fout='%s/ddnpar.asc' %responseDir):
 
         f = open(fout, 'w')
         f.write('  %13.7e\n' %self.Ebin_MeVee)
@@ -270,7 +271,7 @@ if __name__ == "__main__":
 
     import matplotlib.pylab as plt
 
-    f_nresp = '/shares/departments/AUG/users/git/python/neutrons/nresp_f90/SPECT_MPI.DAT'
+    f_nresp = '%s/SPECT_MPI.DAT' %responseDir
 #    f_nresp = 'nresp.dat'
     f_cdf = 'rm2.cdf'
 

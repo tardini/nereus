@@ -16,7 +16,6 @@ except:
     from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 
 import matplotlib.pylab as plt
-from mpl_toolkits.mplot3d.axes3d import Axes3D
 
 fsize   = 8
 titsize = 10

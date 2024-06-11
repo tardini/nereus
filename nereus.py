@@ -230,7 +230,9 @@ class NEREUS(QMainWindow):
 #-----------
 
         self.setWindowTitle('NEREUS')
-        self.setWindowIcon(QIcon('%s/nereus.png' %nereusDir))
+        icon = QIcon()
+        icon.addPixmap(QPixmap('%s/nereus_icon.png' %nereusDir), QIcon.Selected, QIcon.On)
+        self.setWindowIcon(icon)
         self.setStyleSheet("QLabel { width: 4 }")
         self.setStyleSheet("QLineEdit { width: 4 }")
         self.setGeometry(10, 10, xwin, ywin)
