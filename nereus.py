@@ -34,11 +34,14 @@ os.environ['BROWSER'] = '/usr/bin/firefox'
 fmt = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s: %(message)s', '%H:%M:%S')
 hnd = logging.StreamHandler()
 hnd.setFormatter(fmt)
-logger = logging.getLogger('neutReac')
+logger = logging.getLogger('nereus')
 logger.addHandler(hnd)
 logger.setLevel(logging.DEBUG)
 
-neutReacDir = os.path.dirname(os.path.realpath(__file__))
+nereusDir = os.path.dirname(os.path.realpath(__file__))
+
+os.system('mkdir -p %s/nresp/output' %nereusDir)
+os.system('mkdir -p %s/dress_client/output' %nereusDir)
 
 
 class NEREUS(QMainWindow):
@@ -148,11 +151,11 @@ class NEREUS(QMainWindow):
             but = QPushButton()
             but.setGeometry(xpos, xicon, ypos, yicon)
             but.setStyleSheet("min-height: %dpx; padding: 0.0em 0.0em 0.0em 0.0em" %yicon)
-            fgif = '%s/%s.gif' %(neutReacDir, key)
+            fgif = '%s/%s.gif' %(nereusDir, key)
             if os.path.isfile(fgif):
                 but.setIcon(QIcon(fgif))
             else:
-                fpng = '%s/%s.png' %(neutReacDir, key)
+                fpng = '%s/%s.png' %(nereusDir, key)
                 but.setIcon(QIcon(fpng))
             but.setIconSize(QSize(ybar, ybar))
             but.clicked.connect(fmap[key])
@@ -163,7 +166,7 @@ class NEREUS(QMainWindow):
 
 # User options
 
-        f_json = '%s/settings/default.json' %neutReacDir
+        f_json = '%s/settings/default.json' %nereusDir
         with open(f_json, 'r') as fjson:
             self.setup_init = json.load(fjson)
         self.gui = {}
@@ -226,10 +229,11 @@ class NEREUS(QMainWindow):
 # GUI layout
 #-----------
 
+        self.setWindowTitle('NEREUS')
+        self.setWindowIcon(QIcon('%s/nereus.png' %nereusDir))
         self.setStyleSheet("QLabel { width: 4 }")
         self.setStyleSheet("QLineEdit { width: 4 }")
         self.setGeometry(10, 10, xwin, ywin)
-        self.setWindowTitle('NeutReac')
         self.show()
 
 
@@ -339,7 +343,7 @@ class NEREUS(QMainWindow):
     def loadJSON(self):
 
         ftmp = QFileDialog.getOpenFileName(self, 'Open file', \
-            '%s/settings' %neutReacDir, "json files (*.json)")
+            '%s/settings' %nereusDir, "json files (*.json)")
         if qt5:
             f_json = ftmp[0]
         else:
@@ -354,7 +358,7 @@ class NEREUS(QMainWindow):
 
         out_dic = self.gui2json()
         ftmp = QFileDialog.getSaveFileName(self, 'Save file', \
-            '%s/settings' %neutReacDir, "json files (*.json)")
+            '%s/settings' %nereusDir, "json files (*.json)")
         if qt5:
             f_json = ftmp[0]
         else:

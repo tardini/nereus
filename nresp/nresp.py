@@ -24,8 +24,6 @@ logger.addHandler(hnd)
 logger.addHandler(fhnd)
 logger.propagate = False
 
-os.system('mkdir -p %s/output' %nrespDir)
-
 CS = crossSections.crossSections()
 #CS.plot()
 flt_typ = np.float64
