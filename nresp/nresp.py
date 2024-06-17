@@ -9,6 +9,7 @@ from nresp import crossSections
 import rw_for
 
 nrespDir = os.path.dirname(os.path.realpath(__file__))
+os.system('mkdir -p %s/output' %nrespDir)
 
 fmt = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s | %(message)s', '%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger('nresp')
