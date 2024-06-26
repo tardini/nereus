@@ -7,14 +7,14 @@ __date__    = '19.05.2022'
 import os, sys, logging, webbrowser, json
 
 try:
-    from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QGridLayout, QMenu, QAction, QLabel, QPushButton, QLineEdit, QCheckBox, QFileDialog, QRadioButton, QButtonGroup, QTabWidget, QVBoxLayout, QComboBox
-    from PyQt5.QtGui import QPixmap, QIcon, QIntValidator, QDoubleValidator
+    from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QGridLayout, QMenu, QAction, QLabel, QPushButton, QLineEdit, QCheckBox, QFileDialog, QRadioButton, QButtonGroup, QTabWidget, QVBoxLayout, QComboBox, QSpinBox, QDoubleSpinBox
+    from PyQt5.QtGui import QPixmap, QIcon
     from PyQt5.QtCore import Qt, QRect, QSize
     qt5 = True
     from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 except:
-    from PyQt4.QtCore import Qt, QRect, QSize, QIntValidator, QDoubleValidator
-    from PyQt4.QtGui import QPixmap, QIcon, QMainWindow, QWidget, QApplication, QGridLayout, QMenu, QAction, QLabel, QPushButton, QLineEdit, QCheckBox, QFileDialog, QRadioButton, QButtonGroup, QTabWidget, QVBoxLayout, QComboBox
+    from PyQt4.QtCore import Qt, QRect, QSize
+    from PyQt4.QtGui import QPixmap, QIcon, QMainWindow, QWidget, QApplication, QGridLayout, QMenu, QAction, QLabel, QPushButton, QLineEdit, QCheckBox, QFileDialog, QRadioButton, QButtonGroup, QTabWidget, QVBoxLayout, QComboBox, QSpinBox, QDoubleSpinBox
     from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
     qt5 = False
 
@@ -260,14 +260,17 @@ class NEREUS(QMainWindow):
             val = self.setup_init[node][key]
             qlbl = QLabel(key)
             qlbl.setFixedWidth(lbl_wid)
-            self.gui[node][key] = QLineEdit(str(val))
-            self.gui[node][key].setFixedWidth(ent_wid)
             if isinstance(val, int):
-                valid = QIntValidator()
-                self.gui[node][key].setValidator(valid)
+                self.gui[node][key] = QSpinBox()
+                self.gui[node][key].setRange(0, int(1e9))
+                self.gui[node][key].setValue(val)
             elif isinstance(val, float):
-                valid = QDoubleValidator()
-                self.gui[node][key].setValidator(valid)
+                self.gui[node][key] = QDoubleSpinBox()
+                self.gui[node][key].setRange(-1000., 1000.)
+                self.gui[node][key].setValue(val)
+            else:
+                self.gui[node][key] = QLineEdit(str(val))
+            self.gui[node][key].setFixedWidth(ent_wid)
             layout.addWidget(qlbl               , jrow, col_shift)
             layout.addWidget(self.gui[node][key], jrow, col_shift+1)
             jrow += 1
