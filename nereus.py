@@ -267,6 +267,7 @@ class NEREUS(QMainWindow):
             elif isinstance(val, float):
                 self.gui[node][key] = QDoubleSpinBox()
                 self.gui[node][key].setRange(-1000., 1000.)
+                self.gui[node][key].setDecimals(4) 
                 self.gui[node][key].setValue(val)
             else:
                 self.gui[node][key] = QLineEdit(str(val))
@@ -305,12 +306,11 @@ class NEREUS(QMainWindow):
         for key, val in self.gui[node].items():
             node_dic[key] = {}
             if isinstance(val, QLineEdit):
-                if isinstance(self.setup_init[node][key], int):
-                    node_dic[key] = int(val.text())
-                elif isinstance(self.setup_init[node][key], float):
-                    node_dic[key] = float(val.text())
-                else:
-                    node_dic[key] = val.text()
+                node_dic[key] = val.text()
+            elif isinstance(val, QSpinBox):
+                node_dic[key] = int(val.text())
+            elif isinstance(val, QDoubleSpinBox):
+                node_dic[key] = float(val.text())
             elif isinstance(val, QCheckBox):
                 node_dic[key] = val.isChecked()
             elif isinstance(val, QComboBox):
@@ -424,8 +424,7 @@ class NEREUS(QMainWindow):
         resp = response.RESP()
         fname = ''.join(os.path.splitext(f_in)[:-1])
         ext = os.path.splitext(f_in)[-1]
-        print(fname)
-        print(ext)
+        print(fname + ext)
         if ext == '.cdf':
             resp.from_cdf(f_in)
         elif ext == '.hepro':
@@ -455,6 +454,7 @@ class NEREUS(QMainWindow):
 
         if not hasattr(self, 'wid'):
             self.wid = plots.plotWindow()
+        print('En=',En)
         fig_resp = plots.fig_resp(resp, En_MeV=En)
         self.wid.addPlot('Response matrix', fig_resp)
         self.wid.show()
