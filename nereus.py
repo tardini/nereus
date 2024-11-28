@@ -2,18 +2,18 @@
 
 __author__  = 'Giovanni Tardini (Tel. +49 89 3299-1898)'
 __version__ = '0.0.1'
-__date__    = '19.05.2022'
+__date__    = '10.10.2024'
 
 import os, sys, logging, webbrowser, json
 
 try:
     from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QGridLayout, QMenu, QAction, QLabel, QPushButton, QLineEdit, QCheckBox, QFileDialog, QRadioButton, QButtonGroup, QTabWidget, QVBoxLayout, QComboBox, QSpinBox, QDoubleSpinBox
     from PyQt5.QtGui import QPixmap, QIcon
-    from PyQt5.QtCore import Qt, QRect, QSize
+    from PyQt5.QtCore import Qt, QRect, QSize, QLocale
     qt5 = True
     from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 except:
-    from PyQt4.QtCore import Qt, QRect, QSize
+    from PyQt4.QtCore import Qt, QRect, QSize, QLocale
     from PyQt4.QtGui import QPixmap, QIcon, QMainWindow, QWidget, QApplication, QGridLayout, QMenu, QAction, QLabel, QPushButton, QLineEdit, QCheckBox, QFileDialog, QRadioButton, QButtonGroup, QTabWidget, QVBoxLayout, QComboBox, QSpinBox, QDoubleSpinBox
     from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
     qt5 = False
@@ -30,6 +30,8 @@ from nresp import nresp
 from dress_client import nspectrum
 
 os.environ['BROWSER'] = '/usr/bin/firefox'
+
+locale = QLocale('us')
 
 fmt = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s: %(message)s', '%H:%M:%S')
 hnd = logging.StreamHandler()
@@ -53,6 +55,8 @@ class NEREUS(QMainWindow):
             super().__init__()
         else:
             super(QMainWindow, self).__init__()
+
+        self.setLocale(locale)
 
         xwin  = 1000
         yhead = 44
