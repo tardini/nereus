@@ -31,7 +31,7 @@ from dress_client import nspectrum
 
 os.environ['BROWSER'] = '/usr/bin/firefox'
 
-locale = QLocale('us')
+usLocale = QLocale('us')
 
 fmt = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s: %(message)s', '%H:%M:%S')
 hnd = logging.StreamHandler()
@@ -56,7 +56,7 @@ class NEREUS(QMainWindow):
         else:
             super(QMainWindow, self).__init__()
 
-        self.setLocale(locale)
+        self.setLocale(usLocale)
 
         xwin  = 1000
         yhead = 44
