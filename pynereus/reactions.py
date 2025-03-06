@@ -1,4 +1,4 @@
-import constants as con
+from . import constants as con
 
 class reac_class:
     pass

@@ -399,6 +399,11 @@ def En2light(tuple_in):
     jrand  = n_rand
     jg_rnd = ng_rand
 
+    n_noreact = 0
+    n_nocross = 0
+    n_scat = 0
+    reac_type = None
+
 # MC loop
     np.random.seed(0)
     for j_mc in range(nmc):
@@ -482,8 +487,10 @@ def En2light(tuple_in):
             MediaSequence, CrossPathLen = geom(detector['D'], detector['RG'], detector['DSZ'], detector['RSZ'], detector['DL'], detector['RL'], X0, CX)
             tim[1] = time.time()
 
-            if MediaSequence is None:
-                break
+            if MediaSequence is None: # not crossing anything
+                if n_scat == 0:
+                    n_nocross += 1
+                break # reac. chain
 
             tim[2] = time.time()
             n_cross_cyl = len(MediaSequence)
@@ -505,12 +512,12 @@ def En2light(tuple_in):
 
             RGWT = 1. - np.exp(-GWT_EXP)
 
-            if n_scat <= 0:
+            if n_scat == 0:
                 weight = RGWT[n_cross_cyl-1]
                 RHO *= weight
 
             log_RHO = np.log(1. - RHO)
-            MediumID = 3
+            MediumID = 3 # vacuum
             PathInMedium = 0.
             if SIG[0] > 0. and RGWT[0] >= RHO:
                 PathInMedium = -log_RHO/SIG[0]
@@ -530,6 +537,8 @@ def En2light(tuple_in):
             tim[3] = time.time()
 
             if weight < 2.E-5 or MediumID == 3:
+                if n_scat == 0:
+                    n_noreact += 1
                 break # Reac. chain
             tim[4] = time.time()
             n_scat += 1
@@ -557,6 +566,8 @@ def En2light(tuple_in):
                 while reac_type is None:
                     reac_type = reactionHC(ENE, alpha_sh, SC, rand[jrand])
                     jrand += 1
+                    if n_scat == 1 and reac_type is None:
+                        n_noreact += 1
 
                 if n_scat == 1: # Label first neutron reaction
                     if MediumID == 0:
@@ -725,8 +736,11 @@ def En2light(tuple_in):
                 jrand += 1
                 reac_type = reactionType(ZUU, jEne, ["27AL(N,N)27AL", "27AL(N,N')27AL'"])
                 if reac_type is None:
-                    break #reac_chain
-                if n_scat <= 1:
+                    if n_scat == 1:
+                        n_noreact += 1
+                    break # reac_chain
+
+                if n_scat == 1:
                     first_reac_type = CS.reacTotUse.index(reac_type)
 
                 if reac_type == '27AL(N,N)27AL':
@@ -739,7 +753,7 @@ def En2light(tuple_in):
                 ctheta, cthetar, ENR, ENE = kinema(massMeV['neutron'], massMeV['Al'], massMeV['neutron'], dEnucl, CTCM, ENE)
 
             if ENE <= 0.01:
-                break #reac_chain
+                break # reac_chain
             CX = scatteringDirection(CX, ctheta, PHI)
             X0 = XR
 
@@ -754,9 +768,13 @@ def En2light(tuple_in):
                 count_pp3as [LEVEL0] += 1
                 phs_dim_pp3 [LEVEL0] = max(phsBin, phs_dim_pp3[LEVEL0])
                 pp3as_output[LEVEL0, phsBin] += weight
+        elif n_scat == 1: # 0 LightYieldChain (weight is always >= 2e-5 on first scattering)
+            n_noreact += 1
 
 # End Energy MC loop (incoming neutron)
 
+    logger.info('Fraction of non-reacting neutrons at En=%8.4f MeV: %8.4f' %(En_in_MeV, float(n_noreact)/float(nmc)))
+    logger.info('Fraction of non-crossing neutrons at En=%8.4f MeV: %8.4f' %(En_in_MeV, float(n_nocross)/float(nmc)))
 # Unnormalise arrays w.r.t. NMC and viewing solid angle
 
     norm_mc_F0 = (np.pi*rg_sq*cos_the + 2.*detector['D']*detector['RG']*sin_the)/float(nmc*nresp_set['Ebin_MeVee'])

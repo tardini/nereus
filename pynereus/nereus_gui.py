@@ -17,13 +17,13 @@ except:
 import numpy as np
 import matplotlib.pylab as plt
 from mpl_toolkits.mplot3d import Axes3D
-from reactivities import *
-import calc_cross_section as cs
-from los import los
-import plots, response
-from reactions import reaction
-from nresp import nresp
-from dress_client import nspectrum
+from pynereus.reactivities import *
+import pynereus.calc_cross_section as cs
+from pynereus.los import los
+from pynereus import plots, response
+from pynereus.reactions import reaction
+from pynereus.nresp import nresp
+from pynereus.dress_client import nspectrum
 
 os.environ['BROWSER'] = '/usr/bin/firefox'
 

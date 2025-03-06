@@ -1,7 +1,7 @@
 import json
 import numpy as np
 from scipy.interpolate import interp1d
-from constants import epsilon0, echarge
+from .constants import epsilon0, echarge
 
 
 def sigma_diff(E_in_MeV, mu_in, reac, Z1=None, Z2=None, paired=False):

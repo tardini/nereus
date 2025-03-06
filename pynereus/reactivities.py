@@ -1,6 +1,6 @@
 import numpy as np
-from reactions import reaction
-from constants import alpha
+from .reactions import reaction
+from .constants import alpha
 
 # ControlRoom/source/reactivities.cpp
 #

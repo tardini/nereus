@@ -5,8 +5,8 @@ from matplotlib.path import Path
 import matplotlib.patches as patches
 from multiprocessing import Pool, cpu_count
 import dress
-import response
-from dress_client import fi_codes
+from pynereus import response
+from pynereus.dress_client import fi_codes
 
 fmt = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s: %(message)s', '%H:%M:%S')
 hnd = logging.StreamHandler()

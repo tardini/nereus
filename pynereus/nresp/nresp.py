@@ -4,9 +4,9 @@ import os, logging
 import numpy as np
 import matplotlib.pylab as plt
 from multiprocessing import Pool, cpu_count
-from nresp.en2light import En2light
-from nresp import crossSections
-import rw_for
+from pynereus.nresp.en2light import En2light
+from pynereus.nresp import crossSections
+from pynereus import rw_for
 
 nrespDir = os.path.dirname(os.path.realpath(__file__))
 os.system('mkdir -p %s/output' %nrespDir)

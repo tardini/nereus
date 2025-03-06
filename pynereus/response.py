@@ -1,6 +1,6 @@
 import os, sys, datetime, logging
 import numpy as np
-import rw_for
+from . import rw_for
 from scipy.io import netcdf_file
 
 fmt = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s | %(message)s', '%Y-%m-%d %H:%M:%S')

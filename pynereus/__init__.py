@@ -6,7 +6,7 @@
 import os, logging
 
 __author__  = 'Giovanni Tardini (Tel. +49 89 3299-1898)'
-__version__ = '0.0.1'
+__version__ = '0.0.5'
 __date__    = '15.01.2025'
 
 fmt = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s: %(message)s', '%Y-%m-%d %H:%M:%S')
